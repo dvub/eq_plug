@@ -16,6 +16,7 @@ type Coordinates = Vec<(f32, f32)>;
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 #[ts(export)]
 pub enum DrawData {
+    // TODO: probably should rename this
     Spectrum {
         dry: Coordinates,
         wet: Coordinates,
