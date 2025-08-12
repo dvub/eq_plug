@@ -10,18 +10,22 @@ pub enum Message {
     DrawData(DrawData),
     DrawRequest(DrawRequest),
 }
+type Coordinates = Vec<(f32, f32)>;
+// TODO: change tag/content for clarity
 #[derive(Serialize, Deserialize, TS, Debug)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 #[ts(export)]
 pub enum DrawData {
-    // TODO: rework..?
-    DrySpectrum(Vec<(f32, f32)>),
-    WetSpectrum(Vec<(f32, f32)>),
+    Spectrum {
+        dry: Coordinates,
+        wet: Coordinates,
+        frequency_response: Coordinates,
+    },
 }
+// TODO: change tag/content for clarity
 #[derive(Serialize, Deserialize, TS, Debug)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 #[ts(export)]
 pub enum DrawRequest {
-    DrySpectrum,
-    WetSpectrum,
+    Spectrum,
 }

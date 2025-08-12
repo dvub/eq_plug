@@ -89,14 +89,12 @@ impl PluginGui {
 
     fn handle_draw_request(&mut self, draw_request: DrawRequest, cx: &mut Context) {
         match draw_request {
-            DrawRequest::DrySpectrum => {
-                let coordinates = self.dry_spectrum_analyzer.handle_draw_request();
-                let message = Message::DrawData(DrawData::DrySpectrum(coordinates));
-                cx.send_message(json!(message).to_string());
-            }
-            DrawRequest::WetSpectrum => {
-                let coordinates = self.wet_spectrum_analyzer.handle_draw_request();
-                let message = Message::DrawData(DrawData::WetSpectrum(coordinates));
+            DrawRequest::Spectrum => {
+                let message = Message::DrawData(DrawData::Spectrum {
+                    dry: self.dry_spectrum_analyzer.handle_draw_request(),
+                    wet: self.wet_spectrum_analyzer.handle_draw_request(),
+                    frequency_response: Vec::new(),
+                });
                 cx.send_message(json!(message).to_string());
             }
         }
