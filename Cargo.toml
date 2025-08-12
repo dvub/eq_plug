@@ -1,0 +1,48 @@
+[package]
+name = "eq_plug"
+version = "0.1.0"
+edition = "2021"
+authors = ["dvub <todo>"]
+license = "GPL-3.0-or-later"
+homepage = "todo"
+description = "todo"
+
+[workspace]
+members = ["xtask"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", features = [
+    "assert_process_allocs",
+], rev = "17ba595e748927290eb72974bc528f11d1d20e89" }
+
+fundsp = { git = "https://github.com/dvub/fundsp.git" }
+nih_plug_webview = { git = "https://github.com/toiglak/nih-plug-webview" }
+
+serde = "1.0.219"
+serde_json = "1.0.140"
+ts-rs = "11.0.1"
+# error handling
+anyhow = "1.0.98"
+crossbeam-channel = "0.5.15"
+
+mime_guess = { version = "2.0.5", optional = true }
+include_dir = { version = "0.7.4", optional = true }
+
+[features]
+embedded-gui = ["dep:mime_guess", "dep:include_dir"]
+
+[dev-dependencies]
+tempdir = "0.3.7"
+float-cmp = "0.10.0"
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = "none"
