@@ -9,8 +9,6 @@ export function Canvas(props: {
 	height?: number;
 	className: string | undefined;
 }) {
-	console.log('rerendered canvas');
-
 	const { draw, fps } = props;
 
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -45,7 +43,6 @@ export function Canvas(props: {
 
 		return () => {
 			cancelAnimationFrame(animationFrameId);
-			console.log('END');
 		};
 	}, [draw, fps]);
 	return (

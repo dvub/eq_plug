@@ -31,6 +31,7 @@ export function Spectrum(props: {
 	}, []);
 	usePluginListener(listener);
 
+	// TODO: refactor this
 	function draw(ctx: CanvasRenderingContext2D) {
 		const drawRequest: Message = {
 			type: 'drawRequest',
