@@ -1,6 +1,9 @@
+mod component;
 mod embedded;
+mod freq_response;
 mod ipc;
 mod spectrum_analyzer;
+mod util;
 
 #[cfg(feature = "embedded-gui")]
 use embedded::build_protocol;
@@ -16,14 +19,20 @@ use nih_plug_webview::{
 use serde_json::json;
 use std::{path::PathBuf, sync::Arc};
 
+use crate::{
+    editor::{component::RenderingComponent, freq_response::FrequencyResponse},
+    params::PluginParams,
+};
+
 pub struct PluginGui {
     dry_spectrum_analyzer: SpectrumAnalyzer,
     wet_spectrum_analyzer: SpectrumAnalyzer,
+    frequency_response: FrequencyResponse,
 }
 
 impl PluginGui {
     pub fn new_editor(
-        state: &Arc<WebViewState>,
+        params: &Arc<PluginParams>,
         dry_rx: Receiver<f32>,
         wet_rx: Receiver<f32>,
         sample_rate: Arc<AtomicF32>,
@@ -52,12 +61,13 @@ impl PluginGui {
         // EDITOR
         let editor_base = PluginGui {
             dry_spectrum_analyzer: SpectrumAnalyzer::new(sample_rate.clone(), dry_rx.clone()),
-            wet_spectrum_analyzer: SpectrumAnalyzer::new(sample_rate, wet_rx.clone()),
+            wet_spectrum_analyzer: SpectrumAnalyzer::new(sample_rate.clone(), wet_rx.clone()),
+            frequency_response: FrequencyResponse::new(params, sample_rate.clone()),
         };
 
         Some(Box::new(WebViewEditor::new_with_webview(
             editor_base,
-            state,
+            &params.state,
             config,
             move |mut builder| {
                 #[cfg(feature = "embedded-gui")]
@@ -91,10 +101,10 @@ impl PluginGui {
         match draw_request {
             DrawRequest::Spectrum => {
                 let message = Message::DrawData(DrawData::Spectrum {
-                    dry: self.dry_spectrum_analyzer.handle_draw_request(),
-                    wet: self.wet_spectrum_analyzer.handle_draw_request(),
-                    frequency_response: Vec::new(),
+                    dry: self.dry_spectrum_analyzer.handle_request(),
+                    wet: self.wet_spectrum_analyzer.handle_request(),
                 });
+
                 cx.send_message(json!(message).to_string());
             }
         }
@@ -109,5 +119,11 @@ impl EditorHandler for PluginGui {
         self.handle_message(message, cx);
     }
 
-    fn on_params_changed(&mut self, _: &mut Context) {}
+    fn on_params_changed(&mut self, cx: &mut Context) {
+        let message = Message::DrawData(DrawData::FrequencyResponse(
+            self.frequency_response.handle_request(),
+        ));
+        // TODO: wrap in utility fn
+        cx.send_message(json!(message).to_string());
+    }
 }

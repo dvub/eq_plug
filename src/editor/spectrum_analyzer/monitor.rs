@@ -53,6 +53,7 @@ impl Monitor {
         self.smoothing = 0.5f32.powf(1.0 / (timescale * frame_rate));
         self.fps = frame_rate;
     }
+    /*
     pub fn set_mode(&mut self, meter: MonitorMode) {
         self.meter = meter;
     }
@@ -65,7 +66,7 @@ impl Monitor {
             MonitorMode::Rms(_) => self.meter = MonitorMode::Rms(new_speed),
         };
         self.smoothing = 0.5f32.powf(1.0 / (new_speed * self.fps));
-    }
+    } */
 
     /// Process an input value.
     pub fn tick(&mut self, value: f32) {

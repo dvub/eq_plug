@@ -1,4 +1,4 @@
-use nih_plug::util::{gain_to_db, gain_to_db_fast};
+use nih_plug::util::gain_to_db;
 use std::f32::consts::PI;
 
 use crate::editor::spectrum_analyzer::{config::SpectrumAnalyzerConfig, WINDOW_LENGTH};
@@ -87,8 +87,4 @@ fn calculate_slope_factor(freq: f32, slope: f32, sample_rate: f32) -> f32 {
 
     let magnitude_slope_divisor = half_nyquist.log2().powf(slope) / slope;
     (freq + 1.).log2().powf(slope) / magnitude_slope_divisor
-}
-
-pub fn normalize(value: f32, min: f32, max: f32) -> f32 {
-    (value - min) / (max - min)
 }

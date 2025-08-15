@@ -88,7 +88,7 @@ impl Plugin for PluginStruct {
     }
     fn editor(&mut self, _: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         PluginGui::new_editor(
-            &self.params.state,
+            &self.params,
             self.dry_rx.clone(),
             self.wet_rx.clone(),
             self.sample_rate.clone(),

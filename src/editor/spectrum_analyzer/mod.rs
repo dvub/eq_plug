@@ -9,9 +9,14 @@ use fundsp::hacker32::*;
 use nih_plug::prelude::AtomicF32;
 use std::sync::{atomic::Ordering, Arc, Mutex};
 
-use crate::editor::spectrum_analyzer::{
-    config::{SpectrumAnalyzerConfig, DEFAULT_MONITOR_MODE},
-    processing::{normalize, process_spectrum},
+use crate::editor::{
+    component::RenderingComponent,
+    ipc::Coordinates,
+    spectrum_analyzer::{
+        config::{SpectrumAnalyzerConfig, DEFAULT_MONITOR_MODE},
+        processing::process_spectrum,
+    },
+    util::normalize,
 };
 const WINDOW_LENGTH: usize = 4096;
 const NUM_MONITORS: usize = (WINDOW_LENGTH / 2) + 1;
@@ -50,11 +55,7 @@ impl SpectrumAnalyzer {
             config,
         }
     }
-    fn tick(&mut self) {
-        for sample in self.sample_rx.try_iter() {
-            self.graph.tick(&[sample], &mut [])
-        }
-    }
+
     fn get_bin_levels(&mut self) -> Vec<f32> {
         let spectrum = &*self.spectrum.lock().unwrap();
         self.spectrum_monitors
@@ -66,7 +67,36 @@ impl SpectrumAnalyzer {
             })
             .collect()
     }
-    fn get_drawing_coordinates(&mut self) -> Vec<(f32, f32)> {
+    /*
+    pub fn set_monitor_mode(&mut self, meter: monitor::MonitorMode) {
+        for mon in self.spectrum_monitors.iter_mut() {
+            mon.set_mode(meter);
+        }
+    }
+
+    pub fn set_monitor_fps(&mut self, frame_rate: f32) {
+        for mon in self.spectrum_monitors.iter_mut() {
+            mon.set_frame_rate(frame_rate);
+        }
+    }
+    pub fn set_monitor_decay_speed(&mut self, speed: f32) {
+        for mon in self.spectrum_monitors.iter_mut() {
+            mon.set_decay_speed(speed);
+        }
+    }
+    */
+}
+
+impl RenderingComponent for SpectrumAnalyzer {
+    type RenderType = Coordinates;
+
+    fn tick(&mut self) {
+        for sample in self.sample_rx.try_iter() {
+            self.graph.tick(&[sample], &mut [])
+        }
+    }
+
+    fn get_drawing_coordinates(&mut self) -> Self::RenderType {
         let sample_rate = self.sample_rate.load(Ordering::Relaxed);
         let min_mag = self.config.magnitude_range.0;
         let max_mag = self.config.magnitude_range.1;
@@ -84,30 +114,6 @@ impl SpectrumAnalyzer {
                 (freq_normalized, magnitude_normalized)
             })
             .collect()
-    }
-
-    pub fn set_monitor_mode(&mut self, meter: monitor::MonitorMode) {
-        for mon in self.spectrum_monitors.iter_mut() {
-            mon.set_mode(meter);
-        }
-    }
-
-    pub fn set_monitor_fps(&mut self, frame_rate: f32) {
-        for mon in self.spectrum_monitors.iter_mut() {
-            mon.set_frame_rate(frame_rate);
-        }
-    }
-    pub fn set_monitor_decay_speed(&mut self, speed: f32) {
-        for mon in self.spectrum_monitors.iter_mut() {
-            mon.set_decay_speed(speed);
-        }
-    }
-
-    pub fn handle_draw_request(&mut self) -> Vec<(f32, f32)> {
-        // QUESTION: is it cheaper to just always set the FPS, even if it hasn't changed?
-        // (maybe the compiler will optimize the decay calculations or something)
-        self.tick();
-        self.get_drawing_coordinates()
     }
 }
 

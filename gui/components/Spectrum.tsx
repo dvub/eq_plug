@@ -17,6 +17,7 @@ export function Spectrum(props: {
 
 	const dryCoords = useRef<[number, number][]>([]);
 	const wetCoords = useRef<[number, number][]>([]);
+	const freqCoords = useRef<[number, number][]>([]);
 
 	const listener = useCallback((m: Message) => {
 		if (m.type !== 'drawData') {
@@ -26,7 +27,11 @@ export function Spectrum(props: {
 			const data = m.data.data;
 			dryCoords.current = data.dry;
 			wetCoords.current = data.wet;
-			// TODO: use freq response here
+
+		}
+		if (m.data.type === 'frequencyResponse') {
+			const data = m.data.data;
+			freqCoords.current = data;
 		}
 	}, []);
 	usePluginListener(listener);
@@ -80,6 +85,26 @@ export function Spectrum(props: {
 		ctx.beginPath();
 		for (let i = 0; i < wetSpectrum.length; i++) {
 			const [x, y] = wetSpectrum[i];
+
+			let scaledX = x * width;
+			let scaledY = (1.0 - y) * height;
+
+			if (!antiAliasing) {
+				scaledX = Math.floor(scaledX);
+				scaledY = Math.floor(scaledY);
+			}
+			ctx.lineTo(scaledX, scaledY);
+		}
+
+		ctx.stroke();
+
+		// render freq response
+		ctx.strokeStyle = 'blue';
+		const freqR = freqCoords.current;
+
+		ctx.beginPath();
+		for (let i = 0; i < freqR.length; i++) {
+			const [x, y] = freqR[i];
 
 			let scaledX = x * width;
 			let scaledY = (1.0 - y) * height;
