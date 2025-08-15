@@ -1,6 +1,5 @@
 use std::sync::{atomic::Ordering, Arc};
 
-use fundsp::typenum::Same;
 use nih_plug::prelude::AtomicF32;
 
 use crate::editor::util::{DEFAULT_FREQ_RANGE, DEFAULT_MAGNITUDE_RANGE};
