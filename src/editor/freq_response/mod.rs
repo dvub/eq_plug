@@ -16,19 +16,29 @@ use crate::{
 
 pub struct FrequencyResponse {
     sample_rate: Arc<AtomicF32>,
+    current_sample_rate: f32,
     config: FrequencyResponseConfig,
     graph: Box<dyn AudioUnit>,
+    /// frequencies to grab a response from and display.
+    frequencies: Vec<f32>,
 }
 
 impl FrequencyResponse {
     pub fn new(p: &Arc<PluginParams>, sample_rate: Arc<AtomicF32>) -> Self {
-        let mut eq: Box<dyn AudioUnit> = Box::new(build_eq(p));
-        eq.filter_stereo(0.5, 0.5);
-
+        let num_points = 250;
+        let inc = (num_points as f32).recip();
+        let frequencies = (0..=num_points).map(|x| x as f32 * inc).collect();
+        println!(
+            "Frequency response using the following points: {:?}",
+            frequencies
+        );
         Self {
-            graph: eq,
+            graph: Box::new(build_eq(p)),
             config: FrequencyResponseConfig::new(sample_rate.clone()),
             sample_rate: sample_rate.clone(),
+
+            frequencies,
+            current_sample_rate: 0.0,
         }
     }
 }
@@ -37,23 +47,25 @@ impl RenderingComponent for FrequencyResponse {
     type RenderType = Vec<(f32, f32)>;
 
     fn tick(&mut self) {
+        let new_sample_rate = self.sample_rate.load(Ordering::Relaxed);
+
         // TODO: fix this hack
-        self.graph
-            .set_sample_rate(self.sample_rate.load(Ordering::Relaxed) as f64);
+        // check for a new sample rate
+        if new_sample_rate != self.current_sample_rate {
+            self.current_sample_rate = new_sample_rate;
+            // NOTE: we do the divide by 2 here
+            self.config.frequency_range.1 = new_sample_rate / 2.0;
+            self.graph.set_sample_rate(new_sample_rate as f64);
+        }
+
         self.graph.filter_stereo(0.5, 0.5);
     }
 
     fn get_drawing_coordinates(&mut self) -> Self::RenderType {
-        let min_freq = self.config.frequency_range.0;
-        let max_freq = self.sample_rate.load(Ordering::Relaxed) / 2.0;
-        (min_freq as u32..max_freq as u32)
-            .step_by(100)
-            .map(|freq| {
-                let minl = min_freq.log2();
-                let range = max_freq.log2() - minl;
-
-                let normalized_freq = ((freq as f32).log2() - minl) / range;
-
+        self.frequencies
+            .iter()
+            .map(|normalized_frequency| {
+                let freq = normalized_to_value(*normalized_frequency, self.config.frequency_range);
                 let response = self
                     .graph
                     .response_db(0, freq as f64)
@@ -65,8 +77,14 @@ impl RenderingComponent for FrequencyResponse {
                     self.config.magnitude_range.1,
                 );
 
-                (normalized_freq, normalized_response)
+                (*normalized_frequency, normalized_response)
             })
             .collect()
     }
+}
+
+fn normalized_to_value(normalized: f32, range: (f32, f32)) -> f32 {
+    let minl = range.0.log2();
+    let range = range.1.log2() - minl;
+    2.0f32.powf((normalized * range) + minl)
 }
