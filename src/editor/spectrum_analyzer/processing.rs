@@ -2,6 +2,9 @@ use nih_plug::util::gain_to_db;
 use std::f32::consts::PI;
 
 use crate::editor::spectrum_analyzer::{config::SpectrumAnalyzerConfig, WINDOW_LENGTH};
+// TODO: make radius configurable?
+// 4 or 5 works best, 3 gives strange artifacts
+const RADIUS: isize = 4;
 
 // https://gist.github.com/ollpu/231ebbf3717afec50fb09108aea6ad2f
 // TODO: optimize this function
@@ -11,11 +14,12 @@ pub fn process_spectrum(
     sample_rate: f32,
     config: &SpectrumAnalyzerConfig,
 ) -> Vec<f32> {
-    // TODO: make radius configurable?
-    let radius = 10;
     let slope = config.slope;
     let min_freq = config.frequency_range.0;
     let max_freq = config.frequency_range.1;
+
+    let slope_divisor = calculate_slope_divisor(sample_rate, slope);
+
     // NOTE: is WINDOW_LENGTH a correct length for the interpolated output?
     let length = if config.interpolate {
         WINDOW_LENGTH
@@ -24,13 +28,14 @@ pub fn process_spectrum(
     };
     let mut output = vec![0.0; length];
 
+    let b = max_freq / min_freq;
     for (index, res) in output.iter_mut().enumerate() {
         // i in [0, N[
         // x normalized to [0, 1[
         let normalized_freq = index as f32 / length as f32;
         // We want to map x to frequency in range [min, max[, log scale
         // Parameters k, b. f = k*b^x
-        let b = max_freq / min_freq;
+
         let current_freq_log = min_freq * b.powf(normalized_freq);
 
         // NOTE:
@@ -42,7 +47,7 @@ pub fn process_spectrum(
         let w = current_freq_log / sample_rate * length as f32;
         let p = (w as isize).clamp(0, (length / 2) as isize);
 
-        let slope_factor_linear = calculate_slope_factor(current_freq_log, slope, sample_rate);
+        let slope_factor_linear = calculate_slope_factor(current_freq_log, slope, slope_divisor);
 
         if !config.interpolate {
             // TODO: possibly refactor to reduce repitition
@@ -56,18 +61,18 @@ pub fn process_spectrum(
         // Lanczos interpolation
         // (expensive)
         let mut result = 0.;
-        for iw in p - radius..=p + radius + 1 {
+        for iw in p - RADIUS..=p + RADIUS + 1 {
             if iw < 0 || iw > (length / 2) as isize {
                 continue;
             }
             let delta = w - iw as f32;
-            if delta.abs() > radius as f32 {
+            if delta.abs() > RADIUS as f32 {
                 continue;
             }
             let lanczos = if delta == 0. {
                 1.
             } else {
-                radius as f32 * (PI * delta).sin() * (PI * delta / radius as f32).sin()
+                RADIUS as f32 * (PI * delta).sin() * (PI * delta / RADIUS as f32).sin()
                     / (PI * delta).powi(2)
             };
 
@@ -82,9 +87,14 @@ pub fn process_spectrum(
     }
     output
 }
-fn calculate_slope_factor(freq: f32, slope: f32, sample_rate: f32) -> f32 {
+
+// TODO: optimize
+fn calculate_slope_divisor(sample_rate: f32, slope: f32) -> f32 {
     let half_nyquist = sample_rate / 2.0;
 
-    let magnitude_slope_divisor = half_nyquist.log2().powf(slope) / slope;
-    (freq + 1.).log2().powf(slope) / magnitude_slope_divisor
+    half_nyquist.log2().powf(slope) / slope
+}
+
+fn calculate_slope_factor(freq: f32, slope: f32, divisor: f32) -> f32 {
+    (freq + 1.).log2().powf(slope) / divisor
 }
