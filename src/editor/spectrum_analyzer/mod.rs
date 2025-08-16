@@ -18,7 +18,7 @@ use crate::editor::{
     },
     util::normalize,
 };
-const WINDOW_LENGTH: usize = 4096;
+const WINDOW_LENGTH: usize = 2048;
 const NUM_MONITORS: usize = (WINDOW_LENGTH / 2) + 1;
 
 pub struct SpectrumAnalyzer {
@@ -34,6 +34,8 @@ pub struct SpectrumAnalyzer {
     sample_rate: Arc<AtomicF32>,
 
     pub config: SpectrumAnalyzerConfig,
+
+    output_buffer: Vec<f32>,
 }
 
 impl SpectrumAnalyzer {
@@ -45,6 +47,7 @@ impl SpectrumAnalyzer {
 
         let mut graph = build_fft_graph(spectrum.clone());
         graph.set_sample_rate(sample_rate.load(Ordering::Relaxed) as f64);
+
         Self {
             spectrum,
             spectrum_monitors,
@@ -53,6 +56,9 @@ impl SpectrumAnalyzer {
             sample_rx,
 
             config,
+
+            // TODO: make configurable i guess
+            output_buffer: vec![0.0; WINDOW_LENGTH],
         }
     }
 
@@ -102,7 +108,13 @@ impl RenderingComponent for SpectrumAnalyzer {
         let max_mag = self.config.magnitude_range.1;
 
         let linear_levels = self.get_bin_levels();
-        let output = process_spectrum(&linear_levels, sample_rate, &self.config);
+        process_spectrum(
+            &linear_levels,
+            &mut self.output_buffer,
+            sample_rate,
+            &self.config,
+        );
+        let output = &self.output_buffer;
         output
             .iter()
             .enumerate()

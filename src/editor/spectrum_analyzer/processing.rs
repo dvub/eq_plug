@@ -1,35 +1,31 @@
+use crate::editor::spectrum_analyzer::{config::SpectrumAnalyzerConfig, WINDOW_LENGTH};
 use nih_plug::util::gain_to_db;
+use rayon::prelude::*;
 use std::f32::consts::PI;
 
-use crate::editor::spectrum_analyzer::{config::SpectrumAnalyzerConfig, WINDOW_LENGTH};
-// TODO: make radius configurable?
-// 4 or 5 works best, 3 gives strange artifacts
 const RADIUS: isize = 4;
 
-// https://gist.github.com/ollpu/231ebbf3717afec50fb09108aea6ad2f
-// TODO: optimize this function
+// it will probably be best to simply use a cheaper means of interpolation
+// lanczos looks good, but is.. insanely expensive
 
+// https://gist.github.com/ollpu/231ebbf3717afec50fb09108aea6ad2f
 pub fn process_spectrum(
     input: &[f32],
+    output: &mut [f32],
     sample_rate: f32,
     config: &SpectrumAnalyzerConfig,
-) -> Vec<f32> {
+) {
     let slope = config.slope;
     let min_freq = config.frequency_range.0;
     let max_freq = config.frequency_range.1;
 
+    // TODO: refactor slope calculation logic
     let slope_divisor = calculate_slope_divisor(sample_rate, slope);
 
-    // NOTE: is WINDOW_LENGTH a correct length for the interpolated output?
-    let length = if config.interpolate {
-        WINDOW_LENGTH
-    } else {
-        input.len()
-    };
-    let mut output = vec![0.0; length];
+    let length = output.len();
 
     let b = max_freq / min_freq;
-    for (index, res) in output.iter_mut().enumerate() {
+    output.par_iter_mut().enumerate().for_each(|(index, res)| {
         // i in [0, N[
         // x normalized to [0, 1[
         let normalized_freq = index as f32 / length as f32;
@@ -55,7 +51,7 @@ pub fn process_spectrum(
             // TODO: add config option for fast gain to db conversion
             let sloped_bin_db = gain_to_db(current_bin_linear * slope_factor_linear);
             *res = sloped_bin_db;
-            continue;
+            return;
         }
 
         // Lanczos interpolation
@@ -84,8 +80,7 @@ pub fn process_spectrum(
             result += lanczos * sloped_bin_db;
         }
         *res = result;
-    }
-    output
+    });
 }
 
 // TODO: optimize

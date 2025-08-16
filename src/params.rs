@@ -7,7 +7,7 @@ const MAX_FREQ: f32 = 22_050.0;
 
 // i got these from playing around with ableton's stock EQs
 // they seemed sensible enough to me!
-const DEFAULT_Q: f32 = 0.1;
+const DEFAULT_Q: f32 = 0.7;
 const MIN_Q: f32 = 0.1;
 const MAX_Q: f32 = 18.0;
 
