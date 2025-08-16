@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-const DEFAULT_FPS: f32 = 30.0;
+const DEFAULT_FPS: f32 = 60.0;
 
 #[derive(Deserialize, Serialize, TS, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]

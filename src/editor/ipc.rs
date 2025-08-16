@@ -17,7 +17,7 @@ pub type Coordinates = Vec<(f32, f32)>;
 #[ts(export)]
 pub enum DrawData {
     // TODO: probably should rename this to Eq or something
-    Spectrum { dry: Coordinates, wet: Coordinates },
+    Spectrum { dry: Vec<f32>, wet: Vec<f32> },
     FrequencyResponse(Coordinates),
 }
 // TODO: change tag/content for clarity

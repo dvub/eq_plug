@@ -13,9 +13,7 @@ use spectrum_analyzer::SpectrumAnalyzer;
 
 use crossbeam_channel::Receiver;
 use nih_plug::{editor::Editor, prelude::AtomicF32};
-use nih_plug_webview::{
-    Context, EditorHandler, WebViewConfig, WebViewEditor, WebViewSource, WebViewState,
-};
+use nih_plug_webview::{Context, EditorHandler, WebViewConfig, WebViewEditor, WebViewSource};
 use serde_json::json;
 use std::{path::PathBuf, sync::Arc};
 

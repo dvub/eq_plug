@@ -1,7 +1,5 @@
-mod config;
-
 pub mod monitor;
-mod processing;
+
 use monitor::Monitor;
 
 use crossbeam_channel::Receiver;
@@ -9,16 +7,8 @@ use fundsp::hacker32::*;
 use nih_plug::prelude::AtomicF32;
 use std::sync::{atomic::Ordering, Arc, Mutex};
 
-use crate::editor::{
-    component::RenderingComponent,
-    ipc::Coordinates,
-    spectrum_analyzer::{
-        config::{SpectrumAnalyzerConfig, DEFAULT_MONITOR_MODE},
-        processing::process_spectrum,
-    },
-    util::normalize,
-};
-const WINDOW_LENGTH: usize = 2048;
+use crate::editor::{component::RenderingComponent, spectrum_analyzer::monitor::MonitorMode};
+const WINDOW_LENGTH: usize = 4096;
 const NUM_MONITORS: usize = (WINDOW_LENGTH / 2) + 1;
 
 pub struct SpectrumAnalyzer {
@@ -30,35 +20,26 @@ pub struct SpectrumAnalyzer {
 
     spectrum: Arc<Mutex<Vec<f32>>>,
     spectrum_monitors: Vec<Monitor>,
-
-    sample_rate: Arc<AtomicF32>,
-
-    pub config: SpectrumAnalyzerConfig,
-
-    output_buffer: Vec<f32>,
 }
+
+const DEFAULT_PEAK_DECAY: f32 = 0.25; // seconds
+
+pub const DEFAULT_MONITOR_MODE: MonitorMode = MonitorMode::Rms(DEFAULT_PEAK_DECAY);
 
 impl SpectrumAnalyzer {
     pub fn new(sample_rate: Arc<AtomicF32>, sample_rx: Receiver<f32>) -> Self {
-        let config = SpectrumAnalyzerConfig::default();
-
         let spectrum_monitors = vec![Monitor::new(DEFAULT_MONITOR_MODE); NUM_MONITORS];
         let spectrum = Arc::new(Mutex::new(vec![0.0; NUM_MONITORS]));
 
         let mut graph = build_fft_graph(spectrum.clone());
+        // TODO: is this needed?1
         graph.set_sample_rate(sample_rate.load(Ordering::Relaxed) as f64);
 
         Self {
             spectrum,
             spectrum_monitors,
             graph,
-            sample_rate,
             sample_rx,
-
-            config,
-
-            // TODO: make configurable i guess
-            output_buffer: vec![0.0; WINDOW_LENGTH],
         }
     }
 
@@ -94,38 +75,15 @@ impl SpectrumAnalyzer {
 }
 
 impl RenderingComponent for SpectrumAnalyzer {
-    type RenderType = Coordinates;
+    type RenderType = Vec<f32>;
 
     fn tick(&mut self) {
         for sample in self.sample_rx.try_iter() {
             self.graph.tick(&[sample], &mut [])
         }
     }
-
     fn get_drawing_coordinates(&mut self) -> Self::RenderType {
-        let sample_rate = self.sample_rate.load(Ordering::Relaxed);
-        let min_mag = self.config.magnitude_range.0;
-        let max_mag = self.config.magnitude_range.1;
-
-        let linear_levels = self.get_bin_levels();
-        process_spectrum(
-            &linear_levels,
-            &mut self.output_buffer,
-            sample_rate,
-            &self.config,
-        );
-        let output = &self.output_buffer;
-        output
-            .iter()
-            .enumerate()
-            .map(|(i, magnitude)| {
-                let freq_normalized = i as f32 / output.len() as f32;
-
-                let magnitude_normalized = normalize(*magnitude, min_mag, max_mag);
-
-                (freq_normalized, magnitude_normalized)
-            })
-            .collect()
+        self.get_bin_levels()
     }
 }
 
