@@ -20,6 +20,7 @@ pub struct SpectrumAnalyzer {
 
     spectrum: Arc<Mutex<Vec<f32>>>,
     spectrum_monitors: Vec<Monitor>,
+    output_buf: Vec<f32>,
 }
 
 const DEFAULT_PEAK_DECAY: f32 = 0.25; // seconds
@@ -40,19 +41,19 @@ impl SpectrumAnalyzer {
             spectrum_monitors,
             graph,
             sample_rx,
+            output_buf: vec![0.0; NUM_MONITORS],
         }
     }
 
-    fn get_bin_levels(&mut self) -> Vec<f32> {
+    fn get_bin_levels(&mut self) {
         let spectrum = &*self.spectrum.lock().unwrap();
         self.spectrum_monitors
             .iter_mut()
             .enumerate()
-            .map(|(i, x)| {
+            .for_each(|(i, x)| {
                 x.tick(spectrum[i]);
-                x.level()
-            })
-            .collect()
+                self.output_buf[i] = x.level();
+            });
     }
     /*
     pub fn set_monitor_mode(&mut self, meter: monitor::MonitorMode) {
@@ -82,8 +83,10 @@ impl RenderingComponent for SpectrumAnalyzer {
             self.graph.tick(&[sample], &mut [])
         }
     }
+    // TODO: fix clone?
     fn get_drawing_coordinates(&mut self) -> Self::RenderType {
-        self.get_bin_levels()
+        self.get_bin_levels();
+        self.output_buf.clone()
     }
 }
 
