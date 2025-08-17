@@ -6,33 +6,39 @@ import { usePluginListener } from '@/hooks/usePluginListener';
 import { useCallback, useRef } from 'react';
 import { Canvas } from '../Canvas';
 
-import { drawRuler } from './ruler';
-import { drawSpectrum } from './spectrum';
-import { gainToDb, normalizeLinear, normalizeLog } from '@/lib/utils';
+import { normalizeLinear, normalizeLog } from '@/lib/utils';
 import { curve } from '@/lib/curve_func';
+import { RulerCanvas } from './ruler/RulerCanvas';
+import { drawSpectrum } from './spectrum';
+
+const FPS = 45;
 
 // TODO: make configurable
 // specifically tie this to real backend sample rate
 export const MAX_FREQ = 20000;
 export const MIN_FREQ = 20;
 
-export const DEFAULT_MIN_DB = -78;
-export const DEFAULT_MAX_DB = 24;
+export const SPECTRUM_MIN_DB = -78;
+export const SPECTRUM_MAX_DB = 6;
 
-export const MIN_FREQ_RESPONSE_DB = -24;
-export const MAX_FREQ_RESPONSE_DB = 24;
+export const FREQ_RESPONSE_MIN_DB = -24;
+export const FREQ_RESPONSE_MAX_DB = 24;
 export const SLOPE = 4.5;
 
+export const FREQUENCY_RESPONSE_STYLE = 'rgb(229, 199, 104)';
+
+// NOTE: we provide a margin on the right side for labels
+// this way, spectrums/freq response will not cover labels
+export const LABEL_MARGIN = 60;
+
 export function Equalizer(props: {
-	fps: number;
 	width?: number;
 	height?: number;
 	className?: string;
 }) {
-	const { width, height, fps } = props;
+	const { width, height } = props;
 
 	// TODO: refactor into one ref object
-
 	const preSpectrum = useRef<number[]>([]);
 	const postSpectrum = useRef<number[]>([]);
 	const frequencyResponse = useRef<[number, number][]>([]);
@@ -64,9 +70,9 @@ export function Equalizer(props: {
 
 		const height = ctx.canvas.height;
 		const width = ctx.canvas.width;
-		ctx.clearRect(0, 0, width, height);
 
-		drawRuler(ctx);
+		const effectiveWidth = width - LABEL_MARGIN;
+		ctx.clearRect(0, 0, width, height);
 
 		// --- render dry ---
 
@@ -81,8 +87,10 @@ export function Equalizer(props: {
 			preSpectrum.current,
 			ctx,
 			true,
-			DEFAULT_MAX_DB,
-			DEFAULT_MIN_DB
+			SPECTRUM_MAX_DB,
+			SPECTRUM_MIN_DB,
+			effectiveWidth,
+			height
 		);
 
 		// --- render wet ---
@@ -92,26 +100,29 @@ export function Equalizer(props: {
 			postSpectrum.current,
 			ctx,
 			true,
-			DEFAULT_MAX_DB,
-			DEFAULT_MIN_DB
+			SPECTRUM_MAX_DB,
+			SPECTRUM_MIN_DB,
+			effectiveWidth,
+			height
 		);
 
 		// render freq response
-		ctx.strokeStyle = 'red';
+		ctx.strokeStyle = FREQUENCY_RESPONSE_STYLE;
 		ctx.lineWidth = 2;
 		const freqR = frequencyResponse.current;
 		ctx.beginPath();
 		const coords = [];
 
-		for (let i = 0; i < freqR.length; i++) {
+		// TODO: fix this -1 hack
+		for (let i = 0; i < freqR.length - 1; i++) {
 			const [freq, responseDb] = freqR[i];
 			const x = normalizeLog(freq, MIN_FREQ, MAX_FREQ);
 			const y = normalizeLinear(
 				responseDb,
-				MIN_FREQ_RESPONSE_DB,
-				MAX_FREQ_RESPONSE_DB
+				FREQ_RESPONSE_MIN_DB,
+				FREQ_RESPONSE_MAX_DB
 			);
-			const scaledX = x * width;
+			const scaledX = x * effectiveWidth;
 			const scaledY = (1.0 - y) * height;
 
 			coords.push(scaledX, scaledY);
@@ -121,12 +132,16 @@ export function Equalizer(props: {
 	}
 
 	return (
-		<Canvas
-			draw={draw}
-			fps={fps}
-			width={width}
-			height={height}
-			className={props.className}
-		/>
+		<>
+			<RulerCanvas className={`${props.className} absolute`} />
+			<Canvas
+				draw={draw}
+				fps={FPS} // we should probably just leave this as a constant
+				width={width}
+				height={height}
+				className={`${props.className} absolute`}
+			/>
+			{/* TODO: add frequency response layer here */}
+		</>
 	);
 }

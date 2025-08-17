@@ -91,14 +91,14 @@ impl RenderingComponent for SpectrumAnalyzer {
 }
 
 fn build_fft_graph(spectrum: Arc<Mutex<Vec<f32>>>) -> Box<dyn AudioUnit> {
+    let normalization = WINDOW_LENGTH as f32 / 2.0;
+
     let fft_processor = resynth::<U1, U0, _>(WINDOW_LENGTH, move |fft| {
         let mut spectrum = spectrum.lock().unwrap();
 
         #[allow(clippy::needless_range_loop)]
         for i in 0..fft.bins() {
             let current_bin = fft.at(0, i);
-            let normalization = WINDOW_LENGTH as f32;
-
             let value = current_bin.norm() / normalization;
             spectrum[i] = value;
         }

@@ -15,6 +15,7 @@ export function Canvas(props: {
 
 	useEffect(() => {
 		let animationFrameId = 0;
+		// TODO: return early if undefined, instead of !
 		const canvas = canvasRef.current!;
 		const ctx = canvas.getContext('2d')!;
 

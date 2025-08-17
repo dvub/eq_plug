@@ -10,11 +10,10 @@ export function drawSpectrum(
 	ctx: CanvasRenderingContext2D,
 	fill: boolean,
 	maxDb: number,
-	minDb: number
+	minDb: number,
+	width: number,
+	height: number
 ) {
-	const width = ctx.canvas.width;
-	const height = ctx.canvas.height;
-
 	// note: this is [x1,y1,x2,y2,...];
 
 	ctx.beginPath();
