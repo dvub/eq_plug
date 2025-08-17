@@ -7,10 +7,7 @@ use nih_plug::prelude::AtomicF32;
 
 use crate::{
     dsp::eq::build_eq,
-    editor::{
-        component::RenderingComponent, freq_response::config::FrequencyResponseConfig,
-        util::normalize,
-    },
+    editor::{component::RenderingComponent, freq_response::config::FrequencyResponseConfig},
     params::PluginParams,
 };
 
@@ -23,15 +20,13 @@ pub struct FrequencyResponse {
     frequencies: Vec<f32>,
 }
 
+const NUM_FREQS: usize = 100;
+
 impl FrequencyResponse {
     pub fn new(p: &Arc<PluginParams>, sample_rate: Arc<AtomicF32>) -> Self {
-        let num_points = 250;
-        let inc = (num_points as f32).recip();
-        let frequencies = (0..=num_points).map(|x| x as f32 * inc).collect();
-        println!(
-            "Frequency response using the following points: {:?}",
-            frequencies
-        );
+        let inc = (NUM_FREQS as f32).recip();
+        let frequencies = (0..=NUM_FREQS).map(|x| x as f32 * inc).collect();
+
         Self {
             graph: Box::new(build_eq(p)),
             config: FrequencyResponseConfig::new(sample_rate.clone()),
@@ -65,19 +60,15 @@ impl RenderingComponent for FrequencyResponse {
         self.frequencies
             .iter()
             .map(|normalized_frequency| {
+                // TODO: calculate this in the constructor, if possible
+                // sample rate thing kinda sucks
                 let freq = normalized_to_value(*normalized_frequency, self.config.frequency_range);
-                let response = self
+                let response_db = self
                     .graph
                     .response_db(0, freq as f64)
                     .expect("ERROR GETTING FREQ RESPONSE") as f32;
 
-                let normalized_response = normalize(
-                    response,
-                    self.config.magnitude_range.0,
-                    self.config.magnitude_range.1,
-                );
-
-                (*normalized_frequency, normalized_response)
+                (freq, response_db)
             })
             .collect()
     }

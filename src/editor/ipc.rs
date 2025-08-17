@@ -10,7 +10,7 @@ pub enum Message {
     DrawData(DrawData),
     DrawRequest(DrawRequest),
 }
-pub type Coordinates = Vec<(f32, f32)>;
+
 // TODO: change tag/content for clarity
 #[derive(Serialize, Deserialize, TS, Debug)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
@@ -18,7 +18,7 @@ pub type Coordinates = Vec<(f32, f32)>;
 pub enum DrawData {
     // TODO: probably should rename this to Eq or something
     Spectrum { dry: Vec<f32>, wet: Vec<f32> },
-    FrequencyResponse(Coordinates),
+    FrequencyResponse(Vec<(f32, f32)>),
 }
 // TODO: change tag/content for clarity
 #[derive(Serialize, Deserialize, TS, Debug)]
