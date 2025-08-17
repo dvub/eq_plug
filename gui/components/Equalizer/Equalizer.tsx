@@ -10,7 +10,6 @@ import { drawRuler } from './ruler';
 import { drawSpectrum } from './spectrum';
 import { gainToDb, normalizeLinear, normalizeLog } from '@/lib/utils';
 import { curve } from '@/lib/curve_func';
-import { Meter, Monitor } from '@/lib/monitor';
 
 // TODO: make configurable
 // specifically tie this to real backend sample rate
