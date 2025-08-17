@@ -1,6 +1,6 @@
 import { curve } from '@/lib/curve_func';
 import { normalizeLog, gainToDb, normalizeLinear } from '@/lib/utils';
-import { MAX_FREQ, MIN_FREQ, MIN_DB, MAX_DB, SLOPE } from './Spectrum';
+import { MAX_FREQ, MIN_FREQ, SLOPE } from './Equalizer';
 
 // NOTE: it would probably be good to figure out a more "correct" value
 const NUM_INTERPOLATED_POINTS = 50;
@@ -8,7 +8,9 @@ const NUM_INTERPOLATED_POINTS = 50;
 export function drawSpectrum(
 	spectrum: number[],
 	ctx: CanvasRenderingContext2D,
-	fill: boolean
+	fill: boolean,
+	maxDb: number,
+	minDb: number
 ) {
 	const width = ctx.canvas.width;
 	const height = ctx.canvas.height;
@@ -19,7 +21,7 @@ export function drawSpectrum(
 
 	// initial point
 	const x = getScaledX(0, spectrum.length, width);
-	const y = getScaledY(0, spectrum, height);
+	const y = getScaledY(0, spectrum, height, minDb, maxDb);
 	ctx.moveTo(x, y);
 
 	// explanation: really, we only need to interpolate the first few bins.
@@ -28,7 +30,7 @@ export function drawSpectrum(
 	const coordinates = [];
 	for (let i = 1; i <= NUM_INTERPOLATED_POINTS; i++) {
 		const x = getScaledX(i, spectrum.length, width);
-		const y = getScaledY(i, spectrum, height);
+		const y = getScaledY(i, spectrum, height, minDb, maxDb);
 
 		coordinates.push(x);
 		coordinates.push(y);
@@ -67,7 +69,7 @@ export function drawSpectrum(
 
 	for (const max of bins) {
 		if (max) {
-			const y = getScaledY(max.index, spectrum, height);
+			const y = getScaledY(max.index, spectrum, height, minDb, maxDb);
 			ctx.lineTo(max.xCoordinate, y);
 		}
 	}
@@ -86,7 +88,13 @@ function getScaledX(i: number, length: number, width: number) {
 	return normalizeLog(linearFreq, MIN_FREQ, MAX_FREQ) * width;
 }
 
-function getScaledY(i: number, input: number[], height: number) {
+function getScaledY(
+	i: number,
+	input: number[],
+	height: number,
+	minDb: number,
+	maxDb: number
+) {
 	const linearFreq = (i / input.length) * MAX_FREQ;
 
 	const magnitudeSlopeDivisor = Math.pow(Math.log2(MAX_FREQ), SLOPE) / SLOPE;
@@ -97,7 +105,7 @@ function getScaledY(i: number, input: number[], height: number) {
 
 	const slopedDb = gainToDb(slopedLinearValue);
 
-	const normY = normalizeLinear(slopedDb, MIN_DB, MAX_DB);
+	const normY = normalizeLinear(slopedDb, minDb, maxDb);
 
 	return (1 - normY) * height;
 }

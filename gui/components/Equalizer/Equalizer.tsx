@@ -7,7 +7,9 @@ import { useCallback, useRef } from 'react';
 import { Canvas } from '../Canvas';
 
 import { drawRuler } from './ruler';
-import { drawSpectrum } from './draw';
+import { drawSpectrum } from './spectrum';
+import { gainToDb, normalizeLinear, normalizeLog } from '@/lib/utils';
+import { curve } from '@/lib/curve_func';
 
 // TODO: make configurable
 // specifically tie this to real backend sample rate
@@ -16,9 +18,12 @@ export const MIN_FREQ = 20;
 export const SLOPE = 4.5;
 
 export const MIN_DB = -78;
-export const MAX_DB = -18;
+export const MAX_DB = 24;
 
-export function Spectrum(props: {
+export const MIN_FREQ_RESPONSE_DB = -24;
+export const MAX_FREQ_RESPONSE_DB = 24;
+
+export function Equalizer(props: {
 	fps: number;
 	width?: number;
 	height?: number;
@@ -30,6 +35,10 @@ export function Spectrum(props: {
 	const preSpectrum = useRef<number[]>([]);
 	const postSpectrum = useRef<number[]>([]);
 	const freqCoords = useRef<[number, number][]>([]);
+	const dbRange = useRef<{ min: number; max: number }>({
+		min: MIN_DB,
+		max: MAX_DB,
+	});
 
 	const listener = useCallback((m: Message) => {
 		if (m.type !== 'drawData') {
@@ -71,25 +80,55 @@ export function Spectrum(props: {
 
 		ctx.strokeStyle = 'rgba(150,150,150,0.5)';
 		ctx.fillStyle = gradient;
-		drawSpectrum(preSpectrum.current, ctx, true);
+		drawSpectrum(
+			preSpectrum.current,
+			ctx,
+			true,
+			dbRange.current.max,
+			dbRange.current.min
+		);
+
+		/*
+		const post = postSpectrum.current;
+		const maxLevel = Math.max(...post);
+		const maxDb = gainToDb(maxLevel);
+
+		dbRange.current.max = maxDb + 4;
+		dbRange.current.min = maxDb - 100;
+		*/
 
 		// --- render wet ---
 		ctx.lineWidth = 1;
 		ctx.strokeStyle = 'white';
-		drawSpectrum(postSpectrum.current, ctx, true);
+		drawSpectrum(
+			postSpectrum.current,
+			ctx,
+			true,
+			dbRange.current.max,
+			dbRange.current.min
+		);
 
 		// render freq response
-		ctx.strokeStyle = 'white';
+		ctx.strokeStyle = 'red';
+		ctx.lineWidth = 2;
 		const freqR = freqCoords.current;
 		ctx.beginPath();
-		for (let i = 0; i < freqR.length; i++) {
-			const [x, y] = freqR[i];
+		const coords = [];
 
+		for (let i = 0; i < freqR.length; i++) {
+			const [freq, responseDb] = freqR[i];
+			const x = normalizeLog(freq, MIN_FREQ, MAX_FREQ);
+			const y = normalizeLinear(
+				responseDb,
+				MIN_FREQ_RESPONSE_DB,
+				MAX_FREQ_RESPONSE_DB
+			);
 			const scaledX = x * width;
 			const scaledY = (1.0 - y) * height;
 
-			ctx.lineTo(scaledX, scaledY);
+			coords.push(scaledX, scaledY);
 		}
+		curve(ctx, coords, 0.5, 100, false);
 		ctx.stroke();
 	}
 
