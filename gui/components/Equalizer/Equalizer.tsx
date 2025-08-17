@@ -10,18 +10,19 @@ import { drawRuler } from './ruler';
 import { drawSpectrum } from './spectrum';
 import { gainToDb, normalizeLinear, normalizeLog } from '@/lib/utils';
 import { curve } from '@/lib/curve_func';
+import { Meter, Monitor } from '@/lib/monitor';
 
 // TODO: make configurable
 // specifically tie this to real backend sample rate
 export const MAX_FREQ = 20000;
 export const MIN_FREQ = 20;
-export const SLOPE = 4.5;
 
-export const MIN_DB = -78;
-export const MAX_DB = 24;
+export const DEFAULT_MIN_DB = -78;
+export const DEFAULT_MAX_DB = 24;
 
 export const MIN_FREQ_RESPONSE_DB = -24;
 export const MAX_FREQ_RESPONSE_DB = 24;
+export const SLOPE = 4.5;
 
 export function Equalizer(props: {
 	fps: number;
@@ -32,26 +33,23 @@ export function Equalizer(props: {
 	const { width, height, fps } = props;
 
 	// TODO: refactor into one ref object
+
 	const preSpectrum = useRef<number[]>([]);
 	const postSpectrum = useRef<number[]>([]);
-	const freqCoords = useRef<[number, number][]>([]);
-	const dbRange = useRef<{ min: number; max: number }>({
-		min: MIN_DB,
-		max: MAX_DB,
-	});
+	const frequencyResponse = useRef<[number, number][]>([]);
 
 	const listener = useCallback((m: Message) => {
 		if (m.type !== 'drawData') {
 			return;
 		}
-		if (m.data.type === 'spectrum') {
-			const data = m.data.data;
+		if (m.data.drawType === 'spectrum') {
+			const data = m.data.drawData;
 			preSpectrum.current = data.dry;
 			postSpectrum.current = data.wet;
 		}
-		if (m.data.type === 'frequencyResponse') {
-			const data = m.data.data;
-			freqCoords.current = data;
+		if (m.data.drawType === 'frequencyResponse') {
+			const data = m.data.drawData;
+			frequencyResponse.current = data;
 		}
 	}, []);
 	usePluginListener(listener);
@@ -60,7 +58,7 @@ export function Equalizer(props: {
 		const drawRequest: Message = {
 			type: 'drawRequest',
 			data: {
-				type: 'spectrum',
+				requestType: 'spectrum',
 			},
 		};
 		window.plugin.send(JSON.stringify(drawRequest));
@@ -84,18 +82,9 @@ export function Equalizer(props: {
 			preSpectrum.current,
 			ctx,
 			true,
-			dbRange.current.max,
-			dbRange.current.min
+			DEFAULT_MAX_DB,
+			DEFAULT_MIN_DB
 		);
-
-		/*
-		const post = postSpectrum.current;
-		const maxLevel = Math.max(...post);
-		const maxDb = gainToDb(maxLevel);
-
-		dbRange.current.max = maxDb + 4;
-		dbRange.current.min = maxDb - 100;
-		*/
 
 		// --- render wet ---
 		ctx.lineWidth = 1;
@@ -104,14 +93,14 @@ export function Equalizer(props: {
 			postSpectrum.current,
 			ctx,
 			true,
-			dbRange.current.max,
-			dbRange.current.min
+			DEFAULT_MAX_DB,
+			DEFAULT_MIN_DB
 		);
 
 		// render freq response
 		ctx.strokeStyle = 'red';
 		ctx.lineWidth = 2;
-		const freqR = freqCoords.current;
+		const freqR = frequencyResponse.current;
 		ctx.beginPath();
 		const coords = [];
 
