@@ -1,3 +1,6 @@
+// cardinal spline
+// adapted to TS by me
+
 /*!	Curve function for canvas 2.3.1
  *	Epistemex (c) 2013-2014
  *	License: MIT
