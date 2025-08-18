@@ -14,11 +14,10 @@ use spectrum_analyzer::SpectrumAnalyzer;
 use crossbeam_channel::Receiver;
 use nih_plug::{editor::Editor, prelude::AtomicF32};
 use nih_plug_webview::{Context, EditorHandler, WebViewConfig, WebViewEditor, WebViewSource};
-use serde_json::json;
 use std::{path::PathBuf, sync::Arc};
 
 use crate::{
-    editor::{component::RenderingComponent, freq_response::FrequencyResponse},
+    editor::{component::RenderingComponent, freq_response::FrequencyResponse, util::send_message},
     params::PluginParams,
 };
 
@@ -72,7 +71,9 @@ impl PluginGui {
                 {
                     builder = builder.with_custom_protocol(protocol_name.clone(), build_protocol());
                 }
-                builder = builder.with_devtools(!cfg!(feature = "embedded-gui"));
+                builder = builder
+                    .with_devtools(!cfg!(feature = "embedded-gui"))
+                    .with_background_color((0, 0, 0, 1));
                 builder
             },
         )))
@@ -80,7 +81,14 @@ impl PluginGui {
 
     fn handle_message(&mut self, message: Message, cx: &mut Context) {
         match message {
-            Message::Init => {}
+            Message::Init => {
+                send_message(
+                    cx,
+                    Message::DrawData(DrawData::FrequencyResponse(
+                        self.frequency_response.handle_request(),
+                    )),
+                );
+            }
             Message::Resize { width, height } => {
                 let resize_result = cx.resize_window(width, height);
                 if !resize_result {
@@ -103,7 +111,7 @@ impl PluginGui {
                     wet: self.wet_spectrum_analyzer.handle_request(),
                 });
 
-                cx.send_message(json!(message).to_string());
+                send_message(cx, message);
             }
         }
     }
@@ -118,10 +126,11 @@ impl EditorHandler for PluginGui {
     }
 
     fn on_params_changed(&mut self, cx: &mut Context) {
-        let message = Message::DrawData(DrawData::FrequencyResponse(
-            self.frequency_response.handle_request(),
-        ));
-        // TODO: wrap in utility fn
-        cx.send_message(json!(message).to_string());
+        send_message(
+            cx,
+            Message::DrawData(DrawData::FrequencyResponse(
+                self.frequency_response.handle_request(),
+            )),
+        );
     }
 }
