@@ -18,7 +18,9 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     editor::{
-        component::RenderingComponent, freq_response::FrequencyResponse, ipc::ParameterUpdate,
+        component::RenderingComponent,
+        freq_response::FrequencyResponse,
+        ipc::{InitResponse, ParameterUpdate},
         util::send_message,
     },
     params::PluginParams,
@@ -86,17 +88,11 @@ impl PluginGui {
 
     fn handle_message(&mut self, message: Message, cx: &mut Context) {
         match message {
+            Message::InitResponse(_) => todo!(),
             Message::ParameterUpdate(parameter_update) => {
                 self.handle_parameter_update(cx, &parameter_update)
             }
-            Message::Init => {
-                send_message(
-                    cx,
-                    Message::DrawData(DrawData::FrequencyResponse(
-                        self.frequency_response.handle_request(),
-                    )),
-                );
-            }
+            Message::Init => self.handle_init(cx),
             Message::Resize { width, height } => {
                 let resize_result = cx.resize_window(width, height);
                 if !resize_result {
@@ -114,11 +110,13 @@ impl PluginGui {
     fn handle_draw_request(&mut self, draw_request: DrawRequest, cx: &mut Context) {
         match draw_request {
             DrawRequest::Spectrum => {
-                let message = Message::DrawData(DrawData::Spectrum {
-                    dry: self.dry_spectrum_analyzer.handle_request(),
-                    wet: self.wet_spectrum_analyzer.handle_request(),
-                });
+                let dry = self.dry_spectrum_analyzer.handle_request();
+                let wet = self.wet_spectrum_analyzer.handle_request();
 
+                if dry.is_empty() && wet.is_empty() {
+                    return;
+                }
+                let message = Message::DrawData(DrawData::Spectrum { dry, wet });
                 send_message(cx, message);
             }
         }
@@ -144,6 +142,17 @@ impl PluginGui {
             param_setter.raw_context.raw_end_set_parameter(param_ptr);
         }
     }
+    fn handle_init(&mut self, cx: &mut Context) {
+        let init_params = build_param_update_array(&self.params);
+
+        send_message(
+            cx,
+            Message::DrawData(DrawData::FrequencyResponse(
+                self.frequency_response.handle_request(),
+            )),
+        );
+        send_message(cx, Message::InitResponse(InitResponse { init_params }));
+    }
 }
 
 impl EditorHandler for PluginGui {
@@ -162,4 +171,17 @@ impl EditorHandler for PluginGui {
             )),
         );
     }
+}
+
+fn build_param_update_array(params: &Arc<PluginParams>) -> Vec<ParameterUpdate> {
+    let param_map = params.param_map();
+    param_map
+        // TODO: issue with into_iter?
+        .into_iter()
+        .map(|(id, ptr, _)| ParameterUpdate {
+            parameter_id: id,
+            // TODO: double-check that this usage of unsafe is appropriate
+            value: unsafe { ptr.unmodulated_normalized_value() },
+        })
+        .collect()
 }

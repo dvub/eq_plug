@@ -6,6 +6,7 @@ use ts_rs::TS;
 #[ts(export)]
 pub enum Message {
     Init,
+    InitResponse(InitResponse),
     Resize { width: f64, height: f64 },
     DrawData(DrawData),
     DrawRequest(DrawRequest),
@@ -32,4 +33,11 @@ pub enum DrawRequest {
 pub struct ParameterUpdate {
     pub parameter_id: String,
     pub value: f32,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct InitResponse {
+    pub init_params: Vec<ParameterUpdate>,
 }
