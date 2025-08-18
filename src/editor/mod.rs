@@ -163,7 +163,16 @@ impl EditorHandler for PluginGui {
         self.handle_message(message, cx);
     }
 
-    fn on_params_changed(&mut self, cx: &mut Context) {
+    fn on_params_changed(&mut self, cx: &mut Context) {}
+    fn on_param_value_changed(&mut self, cx: &mut Context, id: &str, normalized_value: f32) {
+        send_message(
+            cx,
+            Message::ParameterUpdate(ParameterUpdate {
+                parameter_id: id.to_string(),
+                value: normalized_value,
+            }),
+        );
+        // NOTE: in the future, don't update if an EQ param wasn't changed
         send_message(
             cx,
             Message::DrawData(DrawData::FrequencyResponse(
