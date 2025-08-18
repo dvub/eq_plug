@@ -3,7 +3,7 @@
 import { Message } from '@/bindings/Message';
 import { usePluginListener } from '@/hooks/usePluginListener';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { Canvas } from '../Canvas';
 
 import { RulerCanvas } from './ruler/RulerCanvas';
@@ -14,8 +14,6 @@ import { EqControls } from './controls/ControlNode';
 
 const FPS = 45;
 
-// TODO: make configurable
-// specifically tie this to real backend sample rate
 export const MAX_FREQ = 22050;
 export const MIN_FREQ = 20;
 
