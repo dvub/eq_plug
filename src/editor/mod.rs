@@ -12,12 +12,15 @@ use ipc::{DrawData, DrawRequest, Message};
 use spectrum_analyzer::SpectrumAnalyzer;
 
 use crossbeam_channel::Receiver;
-use nih_plug::{editor::Editor, prelude::AtomicF32};
+use nih_plug::{editor::Editor, params::Params, prelude::AtomicF32};
 use nih_plug_webview::{Context, EditorHandler, WebViewConfig, WebViewEditor, WebViewSource};
 use std::{path::PathBuf, sync::Arc};
 
 use crate::{
-    editor::{component::RenderingComponent, freq_response::FrequencyResponse, util::send_message},
+    editor::{
+        component::RenderingComponent, freq_response::FrequencyResponse, ipc::ParameterUpdate,
+        util::send_message,
+    },
     params::PluginParams,
 };
 
@@ -25,6 +28,7 @@ pub struct PluginGui {
     dry_spectrum_analyzer: SpectrumAnalyzer,
     wet_spectrum_analyzer: SpectrumAnalyzer,
     frequency_response: FrequencyResponse,
+    params: Arc<PluginParams>,
 }
 
 impl PluginGui {
@@ -60,6 +64,7 @@ impl PluginGui {
             dry_spectrum_analyzer: SpectrumAnalyzer::new(sample_rate.clone(), dry_rx.clone()),
             wet_spectrum_analyzer: SpectrumAnalyzer::new(sample_rate.clone(), wet_rx.clone()),
             frequency_response: FrequencyResponse::new(params, sample_rate.clone()),
+            params: params.clone(),
         };
 
         Some(Box::new(WebViewEditor::new_with_webview(
@@ -81,6 +86,9 @@ impl PluginGui {
 
     fn handle_message(&mut self, message: Message, cx: &mut Context) {
         match message {
+            Message::ParameterUpdate(parameter_update) => {
+                self.handle_parameter_update(cx, &parameter_update)
+            }
             Message::Init => {
                 send_message(
                     cx,
@@ -113,6 +121,27 @@ impl PluginGui {
 
                 send_message(cx, message);
             }
+        }
+    }
+    fn handle_parameter_update(&self, cx: &mut Context, param_update: &ParameterUpdate) {
+        let param_map = self.params.param_map();
+        let param_setter = cx.get_param_setter();
+
+        let normalize_new_value = param_update.value;
+
+        let id = &param_update.parameter_id;
+        let param_ptr = param_map
+            .iter()
+            .find(|(map_id, _, _)| map_id == id)
+            .unwrap()
+            .1;
+
+        unsafe {
+            param_setter.raw_context.raw_begin_set_parameter(param_ptr);
+            param_setter
+                .raw_context
+                .raw_set_parameter_normalized(param_ptr, normalize_new_value);
+            param_setter.raw_context.raw_end_set_parameter(param_ptr);
         }
     }
 }

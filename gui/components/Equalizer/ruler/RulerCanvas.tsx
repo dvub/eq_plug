@@ -2,10 +2,10 @@ import { useRef, useEffect } from 'react';
 import { drawRuler } from './ruler';
 
 export function RulerCanvas(props: { className: string | undefined }) {
-	const staticCanvasRef = useRef<HTMLCanvasElement | null>(null);
+	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
 	useEffect(() => {
-		const canvas = staticCanvasRef.current;
+		const canvas = canvasRef.current;
 		if (!canvas) return;
 
 		canvas.width = canvas.offsetWidth;
@@ -17,5 +17,5 @@ export function RulerCanvas(props: { className: string | undefined }) {
 		drawRuler(ctx);
 	}, []);
 
-	return <canvas className={props.className} ref={staticCanvasRef} />;
+	return <canvas className={props.className} ref={canvasRef} />;
 }

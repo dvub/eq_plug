@@ -11,7 +11,8 @@
   "dependencies": {
     "next": "15.4.6",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-draggable": "^4.5.0"
   },
   "devDependencies": {
     "typescript": "^5",

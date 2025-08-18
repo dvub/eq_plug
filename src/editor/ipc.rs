@@ -9,6 +9,7 @@ pub enum Message {
     Resize { width: f64, height: f64 },
     DrawData(DrawData),
     DrawRequest(DrawRequest),
+    ParameterUpdate(ParameterUpdate),
 }
 
 #[derive(Serialize, Deserialize, TS, Debug)]
@@ -23,4 +24,12 @@ pub enum DrawData {
 #[ts(export)]
 pub enum DrawRequest {
     Spectrum,
+}
+
+#[derive(Serialize, Deserialize, TS, Debug)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ParameterUpdate {
+    pub parameter_id: String,
+    pub value: f32,
 }
