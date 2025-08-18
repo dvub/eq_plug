@@ -1514,7 +1514,7 @@ dependencies = [
 [[package]]
 name = "nih_plug_webview"
 version = "0.2.0"
-source = "git+https://github.com/toiglak/nih-plug-webview#144e916e1f11fcc7f2c8847de835de13af4c7300"
+source = "git+https://github.com/dvub/nih-plug-webview?branch=no-reparent#56f80f3ca5849f4d825cbee9cb1a3699faab6254"
 dependencies = [
  "crossbeam",
  "nih_plug",
