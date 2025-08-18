@@ -12,13 +12,13 @@ use crate::{
 pub fn lp_freq<N: Size<f32>>(
     p: &Arc<PluginParams>,
 ) -> An<ParamNode<PluginParams, impl Accessor<PluginParams>, N>> {
-    ParamNode::new(p, |p| p.lowpass_freq.smoothed.next())
+    ParamNode::new(p, |p| p.lowpass_freq.value())
 }
 
 pub fn lp_q<N: Size<f32>>(
     p: &Arc<PluginParams>,
 ) -> An<ParamNode<PluginParams, impl Accessor<PluginParams>, N>> {
-    ParamNode::new(p, |p| p.lowpass_q.smoothed.next())
+    ParamNode::new(p, |p| p.lowpass_q.value())
 }
 
 // highpass
@@ -26,12 +26,12 @@ pub fn lp_q<N: Size<f32>>(
 pub fn hp_freq<N: Size<f32>>(
     p: &Arc<PluginParams>,
 ) -> An<ParamNode<PluginParams, impl Accessor<PluginParams>, N>> {
-    ParamNode::new(p, |p| p.highpass_freq.smoothed.next())
+    ParamNode::new(p, |p| p.highpass_freq.value())
 }
 pub fn hp_q<N: Size<f32>>(
     p: &Arc<PluginParams>,
 ) -> An<ParamNode<PluginParams, impl Accessor<PluginParams>, N>> {
-    ParamNode::new(p, |p| p.highpass_q.smoothed.next())
+    ParamNode::new(p, |p| p.highpass_q.value())
 }
 
 // bell
@@ -39,16 +39,16 @@ pub fn hp_q<N: Size<f32>>(
 pub fn bell_freq<N: Size<f32>>(
     p: &Arc<PluginParams>,
 ) -> An<ParamNode<PluginParams, impl Accessor<PluginParams>, N>> {
-    ParamNode::new(p, |p| p.bell_freq.smoothed.next())
+    ParamNode::new(p, |p| p.bell_freq.value())
 }
 pub fn bell_q<N: Size<f32>>(
     p: &Arc<PluginParams>,
 ) -> An<ParamNode<PluginParams, impl Accessor<PluginParams>, N>> {
-    ParamNode::new(p, |p| p.bell_q.smoothed.next())
+    ParamNode::new(p, |p| p.bell_q.value())
 }
 
 pub fn bell_gain<N: Size<f32>>(
     p: &Arc<PluginParams>,
 ) -> An<ParamNode<PluginParams, impl Accessor<PluginParams>, N>> {
-    ParamNode::new(p, |p| p.bell_gain.smoothed.next())
+    ParamNode::new(p, |p| p.bell_gain.value())
 }
