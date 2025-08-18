@@ -16,7 +16,7 @@ const FPS = 45;
 
 // TODO: make configurable
 // specifically tie this to real backend sample rate
-export const MAX_FREQ = 20000;
+export const MAX_FREQ = 22050;
 export const MIN_FREQ = 20;
 
 export const SPECTRUM_MIN_DB = -78;
