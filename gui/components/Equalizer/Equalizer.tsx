@@ -127,7 +127,7 @@ export function Equalizer(props: {
 
       coords.push(scaledX, scaledY);
     }
-    curve(ctx, coords, 0.5, 100, false);
+    curve(ctx, coords);
     ctx.stroke();
   }
 
