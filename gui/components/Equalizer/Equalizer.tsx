@@ -10,7 +10,7 @@ import { RulerCanvas } from './ruler/RulerCanvas';
 import { drawSpectrum } from './spectrum';
 import { sendToPlugin } from '@/lib';
 import { FrequencyResponse } from './freq_response/FrequencyResponse';
-import { EqControls } from './controls/ControlNode';
+import { EqControls } from './controls/EqControls';
 
 const FPS = 45;
 
