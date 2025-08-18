@@ -5,12 +5,15 @@ use monitor::Monitor;
 use crossbeam_channel::Receiver;
 use fundsp::hacker32::*;
 use nih_plug::prelude::AtomicF32;
+use rayon::prelude::*;
 use std::sync::{atomic::Ordering, Arc, Mutex};
 
 use crate::editor::{component::RenderingComponent, spectrum_analyzer::monitor::MonitorMode};
 const WINDOW_LENGTH: usize = 4096;
 const NUM_MONITORS: usize = (WINDOW_LENGTH / 2) + 1;
 
+// roughly -78 db
+const MIN_GAIN: f32 = 0.000126;
 pub struct SpectrumAnalyzer {
     // NOTE: we could probably compute the FFT without fundsp
     // (but i like fundsp)
@@ -86,6 +89,9 @@ impl RenderingComponent for SpectrumAnalyzer {
     // TODO: fix clone?
     fn get_drawing_coordinates(&mut self) -> Self::RenderType {
         self.get_bin_levels();
+        if self.output_buf.par_iter().all(|x| *x < MIN_GAIN) {
+            return Vec::new();
+        }
         self.output_buf.clone()
     }
 }
