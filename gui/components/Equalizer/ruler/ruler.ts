@@ -12,7 +12,7 @@ import { normalizeLinear, normalizeLog } from '@/lib/utils';
 
 // should we ever make these configurable?
 const FREQ_LINES = [
-	20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900,
+	30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900,
 	1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000, 9_000, 10_000,
 ]; // hz
 

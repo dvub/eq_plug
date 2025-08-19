@@ -1,6 +1,6 @@
-import { Ref, RefObject, useEffect, useRef, useState } from 'react';
+import { RefObject, useEffect, useRef, useState } from 'react';
 import { LABEL_MARGIN } from '../Equalizer';
-import { Draggable, EqControlNode } from './Control';
+import { EqControlNode } from './Control';
 
 // TODO: fix initial positioning
 
@@ -22,6 +22,18 @@ export function EqControls() {
 				containerHeight={height}
 				horizontalParam={'lowpass_freq'}
 				verticalParam={'lowpass_q'}
+			/>
+			<EqControlNode
+				containerWidth={width}
+				containerHeight={height}
+				horizontalParam={'bell_freq'}
+				verticalParam={'bell_gain'}
+			/>
+			<EqControlNode
+				containerWidth={width}
+				containerHeight={height}
+				horizontalParam={'highpass_freq'}
+				verticalParam={'highpass_q'}
 			/>
 		</div>
 	);

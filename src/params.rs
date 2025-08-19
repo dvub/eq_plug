@@ -2,7 +2,7 @@ use nih_plug::{prelude::*, util::db_to_gain};
 use nih_plug_webview::WebViewState;
 use std::sync::Arc;
 
-const MIN_FREQ: f32 = 10.0;
+const MIN_FREQ: f32 = 20.0;
 const MAX_FREQ: f32 = 22_050.0;
 
 // i got these from playing around with ableton's stock EQs

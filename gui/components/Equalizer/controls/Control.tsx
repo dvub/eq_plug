@@ -2,10 +2,12 @@ import { Message } from '@/bindings/Message';
 import { usePluginListener } from '@/hooks/usePluginListener';
 import { sendToPlugin } from '@/lib';
 import { Parameter } from '@/lib/parameters';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { normalizeLinear, normalizeLog } from '@/lib/utils';
+import { useState, useRef, useCallback } from 'react';
 import Draggable, { DraggableEvent } from 'react-draggable';
+import { MAX_FREQ, MIN_FREQ } from '../Equalizer';
+import { skewFactor } from '@/lib/range';
 
-// TODO: fix control vs. response mismatch
 const COMPONENT_SIZE = 20;
 
 export function EqControlNode(props: {
@@ -29,6 +31,7 @@ export function EqControlNode(props: {
 		x: 0,
 		y: 0,
 	});
+	const [f, sf] = useState(0);
 
 	const paramUpdateListener = useCallback(
 		(message: Message) => {
@@ -37,10 +40,18 @@ export function EqControlNode(props: {
 			}
 			const parameterUpdate = message.data;
 			if (parameterUpdate.parameterId === horizontalParam) {
-				const x = parameterUpdate.value;
+				// TODO: optimize these 2 calculations
+				const freq = unnorm(
+					parameterUpdate.value,
+					skewFactor(-2.5),
+					MIN_FREQ,
+					MAX_FREQ
+				);
+				const realNormalized = normalizeLog(freq, MIN_FREQ, MAX_FREQ);
+
 				setNormPos((prevState) => ({
 					...prevState,
-					x,
+					x: realNormalized,
 				}));
 			}
 			if (parameterUpdate.parameterId === verticalParam) {
@@ -61,9 +72,8 @@ export function EqControlNode(props: {
 
 			message.data.initParams.forEach((parameterUpdate) => {
 				if (parameterUpdate.parameterId === horizontalParam) {
-					const x = parameterUpdate.value;
 					setNormPos((prevState) => ({
-						x,
+						x: 0.0,
 						y: prevState.y,
 					}));
 				}
@@ -86,21 +96,24 @@ export function EqControlNode(props: {
 	function handleDrag(event: DraggableEvent) {
 		const e = event as React.MouseEvent<HTMLElement>;
 
-		const newX = e.clientX;
-		const newY = height - e.clientY;
+		const unnormalizedX = clamp(e.clientX, 0, width);
+		sf(unnormalizedX);
+		const linearNormalized = normalizeLinear(unnormalizedX, 0, width);
 
-		const normalizedX = clamp(newX / width, 0, 1);
+		const freq = logUnnormalize(linearNormalized, MIN_FREQ, MAX_FREQ);
+		const normalizedX = norm(freq, MIN_FREQ, MAX_FREQ, skewFactor(-2.5));
+
+		const newY = height - e.clientY;
 		const normalizedY = clamp(newY / height, 0, 1);
 		const realY = 1 - normalizedY;
-		if (normalizedX !== normPos.x) {
-			sendToPlugin({
-				type: 'parameterUpdate',
-				data: {
-					parameterId: horizontalParam,
-					value: normalizedX,
-				},
-			});
-		}
+
+		sendToPlugin({
+			type: 'parameterUpdate',
+			data: {
+				parameterId: horizontalParam,
+				value: normalizedX,
+			},
+		});
 
 		if (realY !== normPos.y) {
 			sendToPlugin({
@@ -116,7 +129,7 @@ export function EqControlNode(props: {
 	}
 
 	const position = {
-		x: normPos.x * width,
+		x: f,
 		y: normPos.y * height,
 	};
 
@@ -138,11 +151,15 @@ function clamp(input: number, min: number, max: number) {
 	return Math.min(Math.max(input, min), max);
 }
 
-/*
 function norm(plain: number, min: number, max: number, factor: number) {
-	return Math.pow(
-		(Math.min(Math.max(plain, min), max) - min) / (max - min),
-		factor
-	);
+	return Math.pow((clamp(plain, min, max) - min) / (max - min), factor);
 }
-*/
+function unnorm(norm: number, factor: number, min: number, max: number) {
+	return Math.pow(norm, 1 / factor) * (max - min) + min;
+}
+
+function logUnnormalize(norm: number, min: number, max: number) {
+	const minl = Math.log2(min);
+	const range = Math.log2(max) - minl;
+	return Math.pow(2, norm * range + minl);
+}
