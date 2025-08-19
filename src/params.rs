@@ -74,7 +74,7 @@ impl Default for PluginParams {
 
             bell_freq: FloatParam::new(
                 "Bell Frequency",
-                MIN_FREQ,
+                500.0,
                 FloatRange::Skewed {
                     min: MIN_FREQ,
                     max: MAX_FREQ,
