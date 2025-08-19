@@ -163,6 +163,7 @@ impl EditorHandler for PluginGui {
         self.handle_message(message, cx);
     }
 
+    // TODO:!!!!! only handle new frequency response when any params change, not PER EVERY SINGLE PARAM CHANGE
     fn on_params_changed(&mut self, cx: &mut Context) {}
     fn on_param_value_changed(&mut self, cx: &mut Context, id: &str, normalized_value: f32) {
         send_message(
