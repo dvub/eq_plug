@@ -2,7 +2,7 @@ import { Message } from '@/bindings/Message';
 import { usePluginListener } from '@/hooks/usePluginListener';
 import { curve } from '@/lib/curve_func';
 import { normalizeLog, normalizeLinear } from '@/lib/utils';
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import {
 	FREQUENCY_RESPONSE_STYLE,
 	MIN_FREQ,
@@ -15,15 +15,13 @@ import {
 export function FrequencyResponse(props: { className: string | undefined }) {
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const frequencyResponse = useRef<[number, number][]>([]);
-	const lastRenderedFrequencyResponse = useRef<[number, number][]>([]);
 
 	usePluginListener((message: Message) => {
 		if (
 			message.type === 'drawData' &&
 			message.data.drawType === 'frequencyResponse'
 		) {
-			const newFrequencyResponse = message.data.drawData;
-			frequencyResponse.current = newFrequencyResponse;
+			frequencyResponse.current = message.data.drawData;
 		}
 	});
 	useEffect(() => {
@@ -39,11 +37,7 @@ export function FrequencyResponse(props: { className: string | undefined }) {
 		const height = ctx.canvas.height;
 
 		function render() {
-			// TODO: is it particularly expensive to do this comparison?
-			if (
-				frequencyResponse.current !==
-				lastRenderedFrequencyResponse.current
-			) {
+			if (frequencyResponse.current.length > 0) {
 				ctx.clearRect(0, 0, width, height);
 				renderFrequencyResponse(
 					frequencyResponse.current,
@@ -51,9 +45,8 @@ export function FrequencyResponse(props: { className: string | undefined }) {
 					width - LABEL_MARGIN,
 					height
 				);
+				frequencyResponse.current = [];
 			}
-
-			lastRenderedFrequencyResponse.current = frequencyResponse.current;
 
 			animationFrameId = requestAnimationFrame(render);
 		}
