@@ -15,45 +15,52 @@ import {
 export function FrequencyResponse(props: { className: string | undefined }) {
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const frequencyResponse = useRef<[number, number][]>([]);
+	const lastRenderedFrequencyResponse = useRef<[number, number][]>([]);
 
-	const listener = useCallback((m: Message) => {
-		if (m.type !== 'drawData') {
-			return;
+	usePluginListener((message: Message) => {
+		if (
+			message.type === 'drawData' &&
+			message.data.drawType === 'frequencyResponse'
+		) {
+			const newFrequencyResponse = message.data.drawData;
+			frequencyResponse.current = newFrequencyResponse;
 		}
-		if (m.data.drawType === 'frequencyResponse') {
-			const data = m.data.drawData;
-			frequencyResponse.current = data;
-		}
-		// NOTE: this component is a bit different..
-		// we do not need to constantly redraw the frequency response!
-		// ONLY needed when the frequency response actually changes
-		// that's why we do all of this
-		const canvas = canvasRef.current;
-		if (!canvas) return;
-
-		const ctx = canvas.getContext('2d');
-		if (!ctx) return;
-
-		const width = ctx.canvas.width;
-		const height = ctx.canvas.height;
-
-		ctx.clearRect(0, 0, width, height);
-
-		renderFrequencyResponse(
-			frequencyResponse.current,
-			ctx,
-			width - LABEL_MARGIN,
-			height
-		);
-	}, []);
-	usePluginListener(listener);
-
+	});
 	useEffect(() => {
-		const canvas = canvasRef.current;
+		let animationFrameId = 0;
+		const canvas = canvasRef.current!;
 		if (!canvas) return;
 
 		canvas.width = canvas.offsetWidth;
 		canvas.height = canvas.offsetHeight;
+
+		const ctx = canvas.getContext('2d')!;
+		const width = ctx.canvas.width;
+		const height = ctx.canvas.height;
+
+		function render() {
+			// TODO: is it particularly expensive to do this comparison?
+			if (
+				frequencyResponse.current !==
+				lastRenderedFrequencyResponse.current
+			) {
+				ctx.clearRect(0, 0, width, height);
+				renderFrequencyResponse(
+					frequencyResponse.current,
+					ctx,
+					width - LABEL_MARGIN,
+					height
+				);
+			}
+
+			lastRenderedFrequencyResponse.current = frequencyResponse.current;
+
+			animationFrameId = requestAnimationFrame(render);
+		}
+		render();
+		return () => {
+			cancelAnimationFrame(animationFrameId);
+		};
 	}, []);
 
 	return <canvas className={props.className} ref={canvasRef} />;
