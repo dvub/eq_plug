@@ -189,7 +189,6 @@ fn build_param_update_array(params: &Arc<PluginParams>) -> Vec<ParameterUpdate> 
         .into_iter()
         .map(|(id, ptr, _)| ParameterUpdate {
             parameter_id: id,
-            // TODO: double-check that this usage of unsafe is appropriate
             value: unsafe { ptr.unmodulated_normalized_value() },
         })
         .collect()
