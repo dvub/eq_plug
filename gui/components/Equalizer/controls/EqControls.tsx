@@ -1,7 +1,6 @@
 import { Ref, RefObject, useEffect, useRef, useState } from 'react';
 import { LABEL_MARGIN } from '../Equalizer';
 import { Draggable, EqControlNode } from './Control';
-import { DndContext } from '@dnd-kit/core';
 
 // TODO: fix initial positioning
 
@@ -18,9 +17,12 @@ export function EqControls() {
 			ref={containerRef}
 			style={{ width: `calc(100% - ${LABEL_MARGIN}px)` }} // TODO: make more elegant
 		>
-			<DndContext>
-				<Draggable />
-			</DndContext>
+			<EqControlNode
+				containerWidth={width}
+				containerHeight={height}
+				horizontalParam={'lowpass_freq'}
+				verticalParam={'lowpass_q'}
+			/>
 		</div>
 	);
 }
