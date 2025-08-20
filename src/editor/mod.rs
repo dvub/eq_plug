@@ -5,6 +5,7 @@ mod ipc;
 mod spectrum_analyzer;
 mod util;
 
+use directories::ProjectDirs;
 #[cfg(feature = "embedded-gui")]
 use embedded::build_protocol;
 
@@ -14,7 +15,7 @@ use spectrum_analyzer::SpectrumAnalyzer;
 use crossbeam_channel::Receiver;
 use nih_plug::{editor::Editor, params::Params, prelude::AtomicF32};
 use nih_plug_webview::{Context, EditorHandler, WebViewConfig, WebViewEditor, WebViewSource};
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     editor::{
@@ -51,15 +52,17 @@ impl PluginGui {
         } else {
             WebViewSource::URL(String::from("http://localhost:3000"))
         };
+
+        let dir = ProjectDirs::from("com", "dvub", "eq plug").unwrap();
+        let data_dir = dir.data_dir();
+
+        let workdir = data_dir.to_path_buf();
         // CONFIG
         let config = WebViewConfig {
             title: "Spectrum Analyzer".to_string(),
             source,
             // QUESTION: should we change this?
-            workdir: PathBuf::from(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/target/webview-workdir"
-            )),
+            workdir,
         };
         // EDITOR
         let editor_base = PluginGui {

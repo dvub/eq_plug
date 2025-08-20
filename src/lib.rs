@@ -3,10 +3,15 @@ mod editor;
 mod params;
 
 use crossbeam_channel::{bounded, Receiver, Sender};
+use directories::ProjectDirs;
 use fundsp::hacker32::*;
 use nih_plug::prelude::*;
 use params::PluginParams;
-use std::sync::{atomic::Ordering, Arc};
+use std::{
+    env::set_var,
+    path::PathBuf,
+    sync::{atomic::Ordering, Arc},
+};
 
 use crate::{dsp::build_graph, editor::PluginGui};
 
@@ -101,6 +106,8 @@ impl Plugin for PluginStruct {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
+        nih_log!("HI");
+
         self.buffers = vec![vec![0.0; buffer_config.max_buffer_size as usize]; 2];
         self.sample_rate
             .store(buffer_config.sample_rate, Ordering::Relaxed);
