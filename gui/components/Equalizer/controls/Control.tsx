@@ -3,7 +3,7 @@ import { usePluginListener } from '@/hooks/usePluginListener';
 import { sendToPlugin } from '@/lib';
 import { Parameter } from '@/lib/parameters';
 import { normalizeLinear, normalizeLog } from '@/lib/utils';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Draggable, { DraggableEvent } from 'react-draggable';
 import { MAX_FREQ, MIN_FREQ } from '../Equalizer';
 import { skewFactor } from '@/lib/range';
@@ -15,23 +15,30 @@ export function EqControlNode(props: {
 	containerHeight: number;
 	horizontalParam: Parameter;
 	verticalParam: Parameter;
+	color: string;
 }) {
-	const { containerWidth, containerHeight, horizontalParam, verticalParam } =
-		props;
+	const {
+		containerWidth,
+		containerHeight,
+		horizontalParam: horizontalParam,
+		verticalParam,
+		color,
+	} = props;
 
 	const width = containerWidth - COMPONENT_SIZE;
 	const height = containerHeight - COMPONENT_SIZE;
 
-	const nodeRef = useRef<HTMLElement>(null);
+	const nodeRef = useRef<HTMLDivElement>(null);
 
-	// const [dragging, setDragging] = useState(false);
-
+	const [loaded, setLoaded] = useState(false);
 	const [dragging, setDragging] = useState(false);
-	const [normPos, setNormPos] = useState({
+
+	const [tempPos, setTempPos] = useState({
 		x: 0,
 		y: 0,
 	});
-	const [f, sf] = useState(0);
+	const [deltas, setDeltas] = useState({ x: 0, y: 0 });
+	const [position, setPosition] = useState({ x: 0, y: 0 });
 
 	const paramUpdateListener = useCallback(
 		(message: Message) => {
@@ -41,7 +48,7 @@ export function EqControlNode(props: {
 			const parameterUpdate = message.data;
 			if (parameterUpdate.parameterId === horizontalParam) {
 				// TODO: optimize these 2 calculations
-				const freq = unnorm(
+				const freq = unnormalize(
 					parameterUpdate.value,
 					skewFactor(-2.5),
 					MIN_FREQ,
@@ -49,14 +56,14 @@ export function EqControlNode(props: {
 				);
 				const realNormalized = normalizeLog(freq, MIN_FREQ, MAX_FREQ);
 
-				setNormPos((prevState) => ({
+				setTempPos((prevState) => ({
 					...prevState,
 					x: realNormalized,
 				}));
 			}
 			if (parameterUpdate.parameterId === verticalParam) {
 				const y = 1 - parameterUpdate.value;
-				setNormPos((prevState) => ({
+				setTempPos((prevState) => ({
 					...prevState,
 					y,
 				}));
@@ -70,68 +77,89 @@ export function EqControlNode(props: {
 				return;
 			}
 
+			// TODO: fix nesting issues
 			message.data.initParams.forEach((parameterUpdate) => {
 				if (parameterUpdate.parameterId === horizontalParam) {
-					setNormPos((prevState) => ({
-						x: 0.0,
+					const x = normFreqParamToNormPosition(
+						parameterUpdate.value
+					);
+					setTempPos((prevState) => ({
+						x,
 						y: prevState.y,
 					}));
 				}
 				if (parameterUpdate.parameterId === verticalParam) {
 					const y = 1 - parameterUpdate.value;
-					setNormPos((prevState) => ({
+					setTempPos((prevState) => ({
 						x: prevState.x,
 						y,
 					}));
 				}
 			});
+
+			setLoaded(true);
 		},
 		[horizontalParam, verticalParam]
 	);
+
+	useEffect(() => {
+		if (loaded) {
+			const newPosition = {
+				x: tempPos.x * width,
+				y: tempPos.y * height,
+			};
+			console.log(
+				'component loaded, setting position from initial params:',
+				newPosition
+			);
+			setPosition(newPosition);
+		}
+	}, [loaded, tempPos, width, height]);
 
 	usePluginListener(paramUpdateListener);
 	usePluginListener(initListener);
 
 	// TODO: should we debounce this in any way?
 	function handleDrag(event: DraggableEvent) {
+		// TODO: fix this hack
 		const e = event as React.MouseEvent<HTMLElement>;
 
-		const unnormalizedX = clamp(e.clientX, 0, width);
-		sf(unnormalizedX);
-		const linearNormalized = normalizeLinear(unnormalizedX, 0, width);
+		const x = clamp(e.clientX + deltas.x, 0, width);
+		const y = clamp(e.clientY + deltas.y, 0, height);
 
-		const freq = logUnnormalize(linearNormalized, MIN_FREQ, MAX_FREQ);
-		const normalizedX = norm(freq, MIN_FREQ, MAX_FREQ, skewFactor(-2.5));
+		const normalizedX = normalizeLinear(x, 0, width);
+		const normalizedY = normalizeLinear(y, 0, height);
 
-		const newY = height - e.clientY;
-		const normalizedY = clamp(newY / height, 0, 1);
-		const realY = 1 - normalizedY;
+		const horizontalParamVal = normPositionToNormFreqParam(normalizedX);
+		const verticalParamVal = 1 - normalizedY;
 
 		sendToPlugin({
 			type: 'parameterUpdate',
 			data: {
 				parameterId: horizontalParam,
-				value: normalizedX,
+				value: horizontalParamVal,
+			},
+		});
+		sendToPlugin({
+			type: 'parameterUpdate',
+			data: {
+				parameterId: verticalParam,
+				value: verticalParamVal,
 			},
 		});
 
-		if (realY !== normPos.y) {
-			sendToPlugin({
-				type: 'parameterUpdate',
-				data: {
-					parameterId: verticalParam,
-					value: normalizedY,
-				},
-			});
-		}
-
-		setNormPos({ x: normalizedX, y: realY });
+		setPosition({ x, y });
 	}
+	function handleDragStart(event: DraggableEvent) {
+		const e = event as React.MouseEvent<HTMLElement>;
 
-	const position = {
-		x: f,
-		y: normPos.y * height,
-	};
+		const deltas = { x: position.x - e.clientX, y: position.y - e.clientY };
+		setDragging(true);
+		setDeltas(deltas);
+	}
+	function handleDragEnd() {
+		setDragging(false);
+	}
 
 	return (
 		<Draggable
@@ -139,14 +167,19 @@ export function EqControlNode(props: {
 			nodeRef={nodeRef}
 			bounds={'parent'}
 			onDrag={handleDrag}
-			onStart={() => setDragging(true)}
-			onStop={() => setDragging(false)}
+			onStart={handleDragStart}
+			onStop={handleDragEnd}
 		>
-			<div className='h-5 w-5  bg-red-400 rounded-xl' ref={nodeRef} />
+			<div
+				className={`h-6 w-6 rounded-[12px] hover:cursor-crosshair border-2 border-white`}
+				style={{ backgroundColor: color }}
+				ref={nodeRef}
+			/>
 		</Draggable>
 	);
 }
 
+// TODO: rewrite allllll of this
 function clamp(input: number, min: number, max: number) {
 	return Math.min(Math.max(input, min), max);
 }
@@ -154,12 +187,24 @@ function clamp(input: number, min: number, max: number) {
 function norm(plain: number, min: number, max: number, factor: number) {
 	return Math.pow((clamp(plain, min, max) - min) / (max - min), factor);
 }
-function unnorm(norm: number, factor: number, min: number, max: number) {
+function unnormalize(norm: number, factor: number, min: number, max: number) {
 	return Math.pow(norm, 1 / factor) * (max - min) + min;
 }
 
-function logUnnormalize(norm: number, min: number, max: number) {
+function unnormalizeLog(norm: number, min: number, max: number) {
 	const minl = Math.log2(min);
 	const range = Math.log2(max) - minl;
 	return Math.pow(2, norm * range + minl);
+}
+
+const SKEW_FACTOR = skewFactor(-2.5);
+
+function normPositionToNormFreqParam(normalized: number) {
+	const frequency = unnormalizeLog(normalized, MIN_FREQ, MAX_FREQ);
+	return norm(frequency, MIN_FREQ, MAX_FREQ, SKEW_FACTOR);
+}
+
+function normFreqParamToNormPosition(param: number) {
+	const freq = unnormalize(param, SKEW_FACTOR, MIN_FREQ, MAX_FREQ);
+	return normalizeLog(freq, MIN_FREQ, MAX_FREQ);
 }

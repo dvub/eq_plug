@@ -22,18 +22,21 @@ export function EqControls() {
 				containerHeight={height}
 				horizontalParam={'lowpass_freq'}
 				verticalParam={'lowpass_q'}
+				color='rgb(127, 85, 177)'
 			/>
 			<EqControlNode
 				containerWidth={width}
 				containerHeight={height}
 				horizontalParam={'bell_freq'}
 				verticalParam={'bell_gain'}
+				color='rgb(244, 155, 171)'
 			/>
 			<EqControlNode
 				containerWidth={width}
 				containerHeight={height}
 				horizontalParam={'highpass_freq'}
 				verticalParam={'highpass_q'}
+				color='rgb(255, 225, 224)'
 			/>
 		</div>
 	);
