@@ -25,6 +25,7 @@ use crate::{
         util::send_message,
     },
     params::PluginParams,
+    util::{get_plugin_data_dir, get_plugin_dir},
 };
 
 pub struct PluginGui {
@@ -53,10 +54,7 @@ impl PluginGui {
             WebViewSource::URL(String::from("http://localhost:3000"))
         };
 
-        let dir = ProjectDirs::from("com", "dvub", "eq plug").unwrap();
-        let data_dir = dir.data_dir();
-
-        let workdir = data_dir.to_path_buf();
+        let workdir = get_plugin_data_dir();
         // CONFIG
         let config = WebViewConfig {
             title: "Spectrum Analyzer".to_string(),

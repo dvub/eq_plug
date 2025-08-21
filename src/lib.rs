@@ -1,19 +1,22 @@
 mod dsp;
 mod editor;
 mod params;
+mod util;
 
 use crossbeam_channel::{bounded, Receiver, Sender};
-use directories::ProjectDirs;
 use fundsp::hacker32::*;
 use nih_plug::prelude::*;
 use params::PluginParams;
 use std::{
-    env::set_var,
-    path::PathBuf,
+    fs,
     sync::{atomic::Ordering, Arc},
 };
 
-use crate::{dsp::build_graph, editor::PluginGui};
+use crate::{
+    dsp::build_graph,
+    editor::PluginGui,
+    util::{get_plugin_dir, get_plugin_log_file},
+};
 
 // This is a shortened version of the gain example with most comments removed, check out
 // https://github.com/robbert-vdh/nih-plug/blob/master/plugins/examples/gain/src/lib.rs to get
@@ -106,7 +109,18 @@ impl Plugin for PluginStruct {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
-        nih_log!("HI");
+        let log_file = get_plugin_log_file();
+
+        nih_log::LoggerBuilder::new(nih_plug::log::LevelFilter::Trace)
+            .filter_module("cosmic_text::buffer")
+            .filter_module("cosmic_text::shape")
+            .filter_module("selectors::matching")
+            .with_output_target(nih_log::OutputTarget::File(log_file.to_path_buf()))
+            .expect("bad things happened")
+            .build_global()
+            .expect("Failed to register gloabl logger");
+
+        nih_log!("Initializing EQ");
 
         self.buffers = vec![vec![0.0; buffer_config.max_buffer_size as usize]; 2];
         self.sample_rate
