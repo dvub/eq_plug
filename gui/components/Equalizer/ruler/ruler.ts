@@ -137,6 +137,8 @@ function applyGradients(ctx: CanvasRenderingContext2D) {
 	ctx.fillStyle = htGradient;
 	ctx.fillRect(0, 0, width, GRADIENT_SIZE);
 
+	// for now, the spectrum analyzer will render this
+	/*
 	const hbGradient = ctx.createLinearGradient(
 		0,
 		height,
@@ -147,4 +149,5 @@ function applyGradients(ctx: CanvasRenderingContext2D) {
 	hbGradient.addColorStop(1, finalStop);
 	ctx.fillStyle = hbGradient;
 	ctx.fillRect(0, height - GRADIENT_SIZE, width, GRADIENT_SIZE);
+	*/
 }

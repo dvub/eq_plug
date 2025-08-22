@@ -98,20 +98,34 @@ export function Equalizer(props: {
 			effectiveWidth,
 			height
 		);
+
+		// extra goodies :)
+		const GRADIENT_SIZE = 100;
+
+		const hbGradient = ctx.createLinearGradient(
+			0,
+			height,
+			0,
+			height - GRADIENT_SIZE
+		);
+		hbGradient.addColorStop(0, 'rgb(0,0,0)');
+		hbGradient.addColorStop(1, 'rgba(0,0,0,0)');
+		ctx.fillStyle = hbGradient;
+		ctx.fillRect(0, height - GRADIENT_SIZE, width, GRADIENT_SIZE);
 	}
 
 	return (
-		<>
-			<RulerCanvas className={`${props.className} absolute`} />
+		<div className={`${props.className} relative`}>
+			<RulerCanvas className='absolute w-full h-full' />
 			<Canvas // NOTE: this renders spectrum(s)
 				draw={draw}
 				fps={FPS} // we should probably just leave this as a constant
 				width={width}
 				height={height}
-				className={`${props.className} absolute`}
+				className='absolute w-full h-full'
 			/>
-			<FrequencyResponse className={`${props.className} absolute`} />
+			<FrequencyResponse className='absolute w-full h-full' />
 			<EqControls />
-		</>
+		</div>
 	);
 }
