@@ -8,6 +8,7 @@ import Draggable, { DraggableEvent } from 'react-draggable';
 import { MAX_FREQ, MIN_FREQ } from '../Equalizer';
 import { skewFactor } from '@/lib/range';
 import { EqControlContainerContext } from './EqControls';
+import clsx from 'clsx';
 
 // TODO: ensure proper centering
 // TODO: add keyboard handler
@@ -233,17 +234,24 @@ export function EqControlNode({
 		>
 			<div
 				tabIndex={0} // TODO: fix
-				className='rounded-[12px]'
-				style={{
-					backgroundColor: color,
-					width: `${COMPONENT_SIZE}px`,
-					height: `${COMPONENT_SIZE}px`,
-				}}
+				className='rounded-full border-3 border-white w-min h-min flex'
 				ref={nodeRef}
 				onWheel={handleWheel}
 				onKeyDown={handleKeyDown}
 				role={'eqcontrol'}
-			/>
+			>
+				<div
+					className={clsx(
+						'rounded-full bg-radial from-45% to-white',
+						color
+					)}
+					style={{
+						//backgroundColor: color,
+						width: `${COMPONENT_SIZE}px`,
+						height: `${COMPONENT_SIZE}px`,
+					}}
+				></div>
+			</div>
 		</Draggable>
 	);
 }
