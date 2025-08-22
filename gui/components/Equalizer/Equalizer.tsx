@@ -114,6 +114,7 @@ export function Equalizer(props: {
 		ctx.fillRect(0, height - GRADIENT_SIZE, width, GRADIENT_SIZE);
 	}
 
+	// TODO: fix z-indexes
 	return (
 		<div className={`${props.className} relative`}>
 			<RulerCanvas className='absolute w-full h-full' />
