@@ -10,21 +10,25 @@ import { skewFactor } from '@/lib/range';
 
 const COMPONENT_SIZE = 20;
 
-export function EqControlNode(props: {
+const ALT_INCREMENT = 0.05;
+
+interface EqControlProps {
 	containerWidth: number;
 	containerHeight: number;
 	horizontalParam: Parameter;
 	verticalParam: Parameter;
+	altParam?: Parameter;
 	color: string;
-}) {
-	const {
-		containerWidth,
-		containerHeight,
-		horizontalParam: horizontalParam,
-		verticalParam,
-		color,
-	} = props;
+}
 
+export function EqControlNode({
+	containerWidth,
+	containerHeight,
+	horizontalParam,
+	verticalParam,
+	altParam,
+	color,
+}: EqControlProps) {
 	const width = containerWidth - COMPONENT_SIZE;
 	const height = containerHeight - COMPONENT_SIZE;
 
@@ -32,6 +36,7 @@ export function EqControlNode(props: {
 
 	const [posNeedsUpdate, setPosNeedsUpdate] = useState(false);
 	const [dragging, setDragging] = useState(false);
+	const [altValue, setAltValue] = useState(0);
 
 	const [tempPos, setTempPos] = useState({
 		x: 0,
@@ -57,20 +62,23 @@ export function EqControlNode(props: {
 				);
 				const realNormalized = normalizeLog(freq, MIN_FREQ, MAX_FREQ);
 
-				setTempPos((prevState) => ({
+				setPosition((prevState) => ({
 					...prevState,
-					x: realNormalized,
+					x: realNormalized * width,
 				}));
 			}
 			if (parameterUpdate.parameterId === verticalParam) {
 				const y = 1 - parameterUpdate.value;
-				setTempPos((prevState) => ({
+				setPosition((prevState) => ({
 					...prevState,
-					y,
+					y: y * height,
 				}));
 			}
+			if (parameterUpdate.parameterId === altParam) {
+				setAltValue(parameterUpdate.value);
+			}
 		},
-		[dragging, horizontalParam, verticalParam]
+		[altParam, dragging, horizontalParam, verticalParam, width, height]
 	);
 	const initListener = useCallback(
 		(message: Message) => {
@@ -97,22 +105,23 @@ export function EqControlNode(props: {
 						y,
 					}));
 				}
+				if (parameterUpdate.parameterId === altParam) {
+					setAltValue(parameterUpdate.value);
+				}
 			});
 
 			setPosNeedsUpdate(true);
 		},
-		[horizontalParam, verticalParam]
+		[horizontalParam, verticalParam, altParam]
 	);
 
 	useEffect(() => {
-		console.log('effect called');
 		if (posNeedsUpdate) {
 			console.log('setting from temp');
 			const newPosition = {
 				x: tempPos.x * width,
 				y: tempPos.y * height,
 			};
-
 			setPosition(newPosition);
 			setPosNeedsUpdate(false);
 		}
@@ -153,7 +162,6 @@ export function EqControlNode(props: {
 		setPosition({ x, y });
 	}
 	function handleDragStart(event: DraggableEvent) {
-		console.log('drag started');
 		const e = event as React.MouseEvent<HTMLElement>;
 
 		const deltas = { x: position.x - e.clientX, y: position.y - e.clientY };
@@ -161,8 +169,24 @@ export function EqControlNode(props: {
 		setDeltas(deltas);
 	}
 	function handleDragEnd() {
-		console.log('drag ended');
 		setDragging(false);
+	}
+	function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
+		console.log(altValue);
+
+		if (!altParam) return;
+
+		const increment = -Math.sign(e.deltaY) * ALT_INCREMENT;
+		const newValue = clamp(altValue + increment, 0, 1);
+
+		setAltValue(newValue);
+		sendToPlugin({
+			type: 'parameterUpdate',
+			data: {
+				parameterId: altParam,
+				value: newValue,
+			},
+		});
 	}
 
 	return (
@@ -173,12 +197,14 @@ export function EqControlNode(props: {
 			onDrag={handleDrag}
 			onStart={handleDragStart}
 			onStop={handleDragEnd}
+
 			// positionOffset={{ x: '-50%', y: '-50%' }}
 		>
 			<div
 				className={`h-6 w-6 rounded-[12px]`}
 				style={{ backgroundColor: color }}
 				ref={nodeRef}
+				onWheel={handleWheel}
 			/>
 		</Draggable>
 	);
@@ -206,7 +232,7 @@ const SKEW_FACTOR = skewFactor(-2.5);
 
 function normPositionToNormFreqParam(normalized: number) {
 	const frequency = unnormalizeLog(normalized, MIN_FREQ, MAX_FREQ);
-	console.log(frequency);
+
 	return norm(frequency, MIN_FREQ, MAX_FREQ, SKEW_FACTOR);
 }
 

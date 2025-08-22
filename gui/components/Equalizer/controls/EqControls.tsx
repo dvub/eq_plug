@@ -13,7 +13,7 @@ export function EqControls() {
 
 	return (
 		<div
-			className='h-[100%] absolute overflow-hidden'
+			className='absolute overflow-hidden h-full'
 			ref={containerRef}
 			style={{ width: `calc(100% - ${LABEL_MARGIN}px)` }} // TODO: make more elegant
 		>
@@ -22,21 +22,22 @@ export function EqControls() {
 				containerHeight={height}
 				horizontalParam={'lowpass_freq'}
 				verticalParam={'lowpass_q'}
-				color='rgb(127, 85, 177)'
+				color='rgb(100,100,100)'
 			/>
 			<EqControlNode
 				containerWidth={width}
 				containerHeight={height}
 				horizontalParam={'bell_freq'}
 				verticalParam={'bell_gain'}
-				color='rgb(244, 155, 171)'
+				altParam='bell_q'
+				color='rgb(100,100,100)'
 			/>
 			<EqControlNode
 				containerWidth={width}
 				containerHeight={height}
 				horizontalParam={'highpass_freq'}
 				verticalParam={'highpass_q'}
-				color='rgb(255, 225, 224)'
+				color='rgb(100,100,100)'
 			/>
 		</div>
 	);
