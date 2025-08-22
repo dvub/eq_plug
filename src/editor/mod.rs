@@ -4,8 +4,6 @@ mod freq_response;
 mod ipc;
 mod spectrum_analyzer;
 mod util;
-
-use directories::ProjectDirs;
 #[cfg(feature = "embedded-gui")]
 use embedded::build_protocol;
 
@@ -25,7 +23,7 @@ use crate::{
         util::send_message,
     },
     params::PluginParams,
-    util::{get_plugin_data_dir, get_plugin_dir},
+    util::get_plugin_data_dir,
 };
 
 pub struct PluginGui {
