@@ -30,7 +30,7 @@ export function EqControlNode(props: {
 
 	const nodeRef = useRef<HTMLDivElement>(null);
 
-	const [loaded, setLoaded] = useState(false);
+	const [posNeedsUpdate, setPosNeedsUpdate] = useState(false);
 	const [dragging, setDragging] = useState(false);
 
 	const [tempPos, setTempPos] = useState({
@@ -45,6 +45,7 @@ export function EqControlNode(props: {
 			if (message.type !== 'parameterUpdate' || dragging) {
 				return;
 			}
+
 			const parameterUpdate = message.data;
 			if (parameterUpdate.parameterId === horizontalParam) {
 				// TODO: optimize these 2 calculations
@@ -76,6 +77,7 @@ export function EqControlNode(props: {
 			if (message.type !== 'initResponse') {
 				return;
 			}
+			console.log('received init params, setting now');
 
 			// TODO: fix nesting issues
 			message.data.initParams.forEach((parameterUpdate) => {
@@ -97,24 +99,24 @@ export function EqControlNode(props: {
 				}
 			});
 
-			setLoaded(true);
+			setPosNeedsUpdate(true);
 		},
 		[horizontalParam, verticalParam]
 	);
 
 	useEffect(() => {
-		if (loaded) {
+		console.log('effect called');
+		if (posNeedsUpdate) {
+			console.log('setting from temp');
 			const newPosition = {
 				x: tempPos.x * width,
 				y: tempPos.y * height,
 			};
-			console.log(
-				'component loaded, setting position from initial params:',
-				newPosition
-			);
+
 			setPosition(newPosition);
+			setPosNeedsUpdate(false);
 		}
-	}, [loaded, tempPos, width, height]);
+	}, [posNeedsUpdate, tempPos, width, height]);
 
 	usePluginListener(paramUpdateListener);
 	usePluginListener(initListener);
@@ -151,6 +153,7 @@ export function EqControlNode(props: {
 		setPosition({ x, y });
 	}
 	function handleDragStart(event: DraggableEvent) {
+		console.log('drag started');
 		const e = event as React.MouseEvent<HTMLElement>;
 
 		const deltas = { x: position.x - e.clientX, y: position.y - e.clientY };
@@ -158,6 +161,7 @@ export function EqControlNode(props: {
 		setDeltas(deltas);
 	}
 	function handleDragEnd() {
+		console.log('drag ended');
 		setDragging(false);
 	}
 
@@ -169,9 +173,10 @@ export function EqControlNode(props: {
 			onDrag={handleDrag}
 			onStart={handleDragStart}
 			onStop={handleDragEnd}
+			// positionOffset={{ x: '-50%', y: '-50%' }}
 		>
 			<div
-				className={`h-6 w-6 rounded-[12px] hover:cursor-crosshair border-2 border-white`}
+				className={`h-6 w-6 rounded-[12px]`}
 				style={{ backgroundColor: color }}
 				ref={nodeRef}
 			/>
@@ -201,6 +206,7 @@ const SKEW_FACTOR = skewFactor(-2.5);
 
 function normPositionToNormFreqParam(normalized: number) {
 	const frequency = unnormalizeLog(normalized, MIN_FREQ, MAX_FREQ);
+	console.log(frequency);
 	return norm(frequency, MIN_FREQ, MAX_FREQ, SKEW_FACTOR);
 }
 

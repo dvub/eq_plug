@@ -1,8 +1,6 @@
 'use client';
 
-
-
-import { Equalizer } from '@/components/Equalizer/Equalizer';
+import { Equalizer } from '@/components/equalizer/Equalizer';
 import { sendToPlugin } from '@/lib';
 import { useEffect } from 'react';
 

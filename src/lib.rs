@@ -115,7 +115,7 @@ impl Plugin for PluginStruct {
         #[cfg(feature = "sentry")]
         {
             let guard = sentry::init((
-                env::var("asd"),
+                "https://e354297fbfe748b7447a0a16231d7139@o4509883616919552.ingest.de.sentry.io/4509883619213392",
                 sentry::ClientOptions {
                     release: sentry::release_name!(),
 
@@ -125,7 +125,6 @@ impl Plugin for PluginStruct {
             ));
             self.sentry_guard = Some(guard);
         }
-
         nih_log!("Initializing EQ");
 
         self.buffers = vec![vec![0.0; buffer_config.max_buffer_size as usize]; 2];
