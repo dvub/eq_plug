@@ -7,7 +7,12 @@ use crossbeam_channel::{bounded, Receiver, Sender};
 use fundsp::hacker32::*;
 use nih_plug::prelude::*;
 use params::PluginParams;
-use std::sync::{atomic::Ordering, Arc};
+#[cfg(feature = "sentry")]
+use sentry::ClientInitGuard;
+use std::{
+    env,
+    sync::{atomic::Ordering, Arc},
+};
 
 use crate::{dsp::build_graph, editor::PluginGui};
 
@@ -27,10 +32,13 @@ struct PluginStruct {
     wet_rx: Receiver<f32>,
 
     sample_rate: Arc<AtomicF32>,
+    #[cfg(feature = "sentry")]
+    sentry_guard: Option<ClientInitGuard>,
 }
 
 impl Default for PluginStruct {
     fn default() -> Self {
+        println!("default called");
         let (dry_tx, dry_rx) = bounded(1024);
         let (wet_tx, wet_rx) = bounded(1024);
         Self {
@@ -43,6 +51,8 @@ impl Default for PluginStruct {
             wet_rx,
             wet_tx,
             sample_rate: Arc::new(AtomicF32::new(0.0)),
+            #[cfg(feature = "sentry")]
+            sentry_guard: None,
         }
     }
 }
@@ -102,12 +112,25 @@ impl Plugin for PluginStruct {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
+        #[cfg(feature = "sentry")]
+        {
+            let guard = sentry::init((
+                env::var("asd"),
+                sentry::ClientOptions {
+                    release: sentry::release_name!(),
+
+                    send_default_pii: false,
+                    ..Default::default()
+                },
+            ));
+            self.sentry_guard = Some(guard);
+        }
+
         nih_log!("Initializing EQ");
 
         self.buffers = vec![vec![0.0; buffer_config.max_buffer_size as usize]; 2];
         self.sample_rate
             .store(buffer_config.sample_rate, Ordering::Relaxed);
-
         let graph = build_graph(
             self.dry_tx.clone(),
             self.wet_tx.clone(),
@@ -164,3 +187,8 @@ impl Vst3Plugin for PluginStruct {
 
 nih_export_clap!(PluginStruct);
 nih_export_vst3!(PluginStruct);
+impl Drop for PluginStruct {
+    fn drop(&mut self) {
+        nih_log!("Dropping plugin");
+    }
+}
