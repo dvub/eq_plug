@@ -1,13 +1,14 @@
-import { RefObject, useEffect, useRef, useState } from 'react';
+import { createContext, RefObject, useEffect, useRef, useState } from 'react';
 import { LABEL_MARGIN } from '../Equalizer';
 import { EqControlNode } from './Control';
 
-// TODO: fix initial positioning
+export type Dimensions = {
+	width: number;
+	height: number;
+};
+export const EqControlContainerContext = createContext<Dimensions | null>(null);
 
-// TODO: provide width and height as a context
 export function EqControls() {
-	console.log('rendered control container');
-
 	const containerRef = useRef<HTMLDivElement>(null);
 	const { width, height } = useContainerDimensions(containerRef);
 
@@ -17,28 +18,24 @@ export function EqControls() {
 			ref={containerRef}
 			style={{ width: `calc(100% - ${LABEL_MARGIN}px)` }} // TODO: make more elegant
 		>
-			<EqControlNode
-				containerWidth={width}
-				containerHeight={height}
-				horizontalParam={'lowpass_freq'}
-				verticalParam={'lowpass_q'}
-				color='rgb(100,100,100)'
-			/>
-			<EqControlNode
-				containerWidth={width}
-				containerHeight={height}
-				horizontalParam={'bell_freq'}
-				verticalParam={'bell_gain'}
-				altParam='bell_q'
-				color='rgb(100,100,100)'
-			/>
-			<EqControlNode
-				containerWidth={width}
-				containerHeight={height}
-				horizontalParam={'highpass_freq'}
-				verticalParam={'highpass_q'}
-				color='rgb(100,100,100)'
-			/>
+			<EqControlContainerContext value={{ width, height }}>
+				<EqControlNode
+					horizontalParam={'lowpass_freq'}
+					verticalParam={'lowpass_q'}
+					color='rgb(100,100,100)'
+				/>
+				<EqControlNode
+					horizontalParam={'bell_freq'}
+					verticalParam={'bell_gain'}
+					altParam='bell_q'
+					color='rgb(100,100,100)'
+				/>
+				<EqControlNode
+					horizontalParam={'highpass_freq'}
+					verticalParam={'highpass_q'}
+					color='rgb(100,100,100)'
+				/>
+			</EqControlContainerContext>
 		</div>
 	);
 }

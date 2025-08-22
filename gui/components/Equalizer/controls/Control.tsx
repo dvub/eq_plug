@@ -3,54 +3,59 @@ import { usePluginListener } from '@/hooks/usePluginListener';
 import { sendToPlugin } from '@/lib';
 import { Parameter } from '@/lib/parameters';
 import { normalizeLinear, normalizeLog } from '@/lib/utils';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useContext } from 'react';
 import Draggable, { DraggableEvent } from 'react-draggable';
 import { MAX_FREQ, MIN_FREQ } from '../Equalizer';
 import { skewFactor } from '@/lib/range';
+import { EqControlContainerContext } from './EqControls';
+
+// TODO: ensure proper centering
+// TODO: add keyboard handler
 
 const COMPONENT_SIZE = 20;
 
+const KEY_DOWN_INCREMENT = 2.5;
 const ALT_INCREMENT = 0.05;
 
-interface EqControlProps {
-	containerWidth: number;
-	containerHeight: number;
+type EqControlProps = {
 	horizontalParam: Parameter;
 	verticalParam: Parameter;
 	altParam?: Parameter;
 	color: string;
-}
+};
 
 export function EqControlNode({
-	containerWidth,
-	containerHeight,
 	horizontalParam,
 	verticalParam,
 	altParam,
 	color,
 }: EqControlProps) {
-	const width = containerWidth - COMPONENT_SIZE;
-	const height = containerHeight - COMPONENT_SIZE;
+	const { width: cw, height: ch } = useContext(EqControlContainerContext)!;
 
+	const width = cw - COMPONENT_SIZE;
+	const height = ch - COMPONENT_SIZE;
+
+	// necessary patch for react-draggable
 	const nodeRef = useRef<HTMLDivElement>(null);
 
-	const [posNeedsUpdate, setPosNeedsUpdate] = useState(false);
-	const [dragging, setDragging] = useState(false);
-	const [altValue, setAltValue] = useState(0);
-
+	const [deltas, setDeltas] = useState({ x: 0, y: 0 });
+	const [position, setPosition] = useState({ x: 0, y: 0 });
 	const [tempPos, setTempPos] = useState({
 		x: 0,
 		y: 0,
 	});
-	const [deltas, setDeltas] = useState({ x: 0, y: 0 });
-	const [position, setPosition] = useState({ x: 0, y: 0 });
+	const [posNeedsUpdate, setPosNeedsUpdate] = useState(false);
 
+	// prevent jittering from receiving old parameter updates
+	const [dragging, setDragging] = useState(false);
+	const [altValue, setAltValue] = useState(0);
+
+	// TODO: refactor
 	const paramUpdateListener = useCallback(
 		(message: Message) => {
 			if (message.type !== 'parameterUpdate' || dragging) {
 				return;
 			}
-
 			const parameterUpdate = message.data;
 			if (parameterUpdate.parameterId === horizontalParam) {
 				// TODO: optimize these 2 calculations
@@ -115,9 +120,11 @@ export function EqControlNode({
 		[horizontalParam, verticalParam, altParam]
 	);
 
+	usePluginListener(paramUpdateListener);
+	usePluginListener(initListener);
+
 	useEffect(() => {
 		if (posNeedsUpdate) {
-			console.log('setting from temp');
 			const newPosition = {
 				x: tempPos.x * width,
 				y: tempPos.y * height,
@@ -127,9 +134,6 @@ export function EqControlNode({
 		}
 	}, [posNeedsUpdate, tempPos, width, height]);
 
-	usePluginListener(paramUpdateListener);
-	usePluginListener(initListener);
-
 	// TODO: should we debounce this in any way?
 	function handleDrag(event: DraggableEvent) {
 		// TODO: fix this hack
@@ -138,26 +142,12 @@ export function EqControlNode({
 		const x = clamp(e.clientX + deltas.x, 0, width);
 		const y = clamp(e.clientY + deltas.y, 0, height);
 
-		const normalizedX = normalizeLinear(x, 0, width);
-		const normalizedY = normalizeLinear(y, 0, height);
-
-		const horizontalParamVal = normPositionToNormFreqParam(normalizedX);
-		const verticalParamVal = 1 - normalizedY;
-
-		sendToPlugin({
-			type: 'parameterUpdate',
-			data: {
-				parameterId: horizontalParam,
-				value: horizontalParamVal,
-			},
-		});
-		sendToPlugin({
-			type: 'parameterUpdate',
-			data: {
-				parameterId: verticalParam,
-				value: verticalParamVal,
-			},
-		});
+		if (x !== position.x) {
+			sendHorizontalParamUpdate(horizontalParam, x, width);
+		}
+		if (y !== position.y) {
+			sendVerticalParamUpdate(verticalParam, y, height);
+		}
 
 		setPosition({ x, y });
 	}
@@ -172,21 +162,64 @@ export function EqControlNode({
 		setDragging(false);
 	}
 	function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
-		console.log(altValue);
-
 		if (!altParam) return;
 
-		const increment = -Math.sign(e.deltaY) * ALT_INCREMENT;
-		const newValue = clamp(altValue + increment, 0, 1);
-
+		const direction = -Math.sign(e.deltaY);
+		const newValue = sendAltParamUpdate(altParam, altValue, direction);
 		setAltValue(newValue);
-		sendToPlugin({
-			type: 'parameterUpdate',
-			data: {
-				parameterId: altParam,
-				value: newValue,
-			},
-		});
+	}
+
+	function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+		const newPosition = { ...position };
+		let increment = KEY_DOWN_INCREMENT;
+
+		if (e.shiftKey) {
+			increment *= 2;
+		}
+		switch (e.key) {
+			case 'ArrowUp':
+				if (e.altKey && altParam) {
+					sendAltParamUpdate(altParam, altValue, -1);
+				} else {
+					newPosition.y = clamp(newPosition.y - increment, 0, height);
+					sendVerticalParamUpdate(
+						verticalParam,
+						newPosition.y,
+						height
+					);
+				}
+				break;
+			case 'ArrowDown':
+				if (e.altKey && altParam) {
+					sendAltParamUpdate(altParam, altValue, 1);
+				} else {
+					newPosition.y = clamp(newPosition.y + increment, 0, height);
+					sendVerticalParamUpdate(
+						verticalParam,
+						newPosition.y,
+						height
+					);
+				}
+
+				break;
+			case 'ArrowLeft':
+				newPosition.x = clamp(newPosition.x - increment, 0, width);
+				sendHorizontalParamUpdate(
+					horizontalParam,
+					newPosition.x,
+					width
+				);
+				break;
+			case 'ArrowRight':
+				newPosition.x = clamp(newPosition.x + increment, 0, width);
+				sendHorizontalParamUpdate(
+					horizontalParam,
+					newPosition.x,
+					width
+				);
+				break;
+		}
+		setPosition(newPosition);
 	}
 
 	return (
@@ -197,14 +230,19 @@ export function EqControlNode({
 			onDrag={handleDrag}
 			onStart={handleDragStart}
 			onStop={handleDragEnd}
-
-			// positionOffset={{ x: '-50%', y: '-50%' }}
 		>
 			<div
-				className={`h-6 w-6 rounded-[12px]`}
-				style={{ backgroundColor: color }}
+				tabIndex={0} // TODO: fix
+				className='rounded-[12px]'
+				style={{
+					backgroundColor: color,
+					width: `${COMPONENT_SIZE}px`,
+					height: `${COMPONENT_SIZE}px`,
+				}}
 				ref={nodeRef}
 				onWheel={handleWheel}
+				onKeyDown={handleKeyDown}
+				role={'eqcontrol'}
 			/>
 		</Draggable>
 	);
@@ -239,4 +277,57 @@ function normPositionToNormFreqParam(normalized: number) {
 function normFreqParamToNormPosition(param: number) {
 	const freq = unnormalize(param, SKEW_FACTOR, MIN_FREQ, MAX_FREQ);
 	return normalizeLog(freq, MIN_FREQ, MAX_FREQ);
+}
+
+// TODO: generalize horizontal/parameter updates to one single function with a normalization parameter
+function sendHorizontalParamUpdate(
+	horizontalParam: Parameter,
+	x: number,
+	width: number
+) {
+	const normalizedX = normalizeLinear(x, 0, width);
+	const horizontalParamVal = normPositionToNormFreqParam(normalizedX);
+
+	sendToPlugin({
+		type: 'parameterUpdate',
+		data: {
+			parameterId: horizontalParam,
+			value: horizontalParamVal,
+		},
+	});
+}
+
+function sendVerticalParamUpdate(
+	verticalParam: Parameter,
+	y: number,
+	height: number
+) {
+	const normalizedY = normalizeLinear(y, 0, height);
+	const verticalParamVal = 1 - normalizedY;
+
+	sendToPlugin({
+		type: 'parameterUpdate',
+		data: {
+			parameterId: verticalParam,
+			value: verticalParamVal,
+		},
+	});
+}
+
+function sendAltParamUpdate(
+	altParam: Parameter,
+	currentValue: number,
+	direction: number
+) {
+	const increment = -direction * ALT_INCREMENT;
+	const newValue = clamp(currentValue + increment, 0, 1);
+
+	sendToPlugin({
+		type: 'parameterUpdate',
+		data: {
+			parameterId: altParam,
+			value: newValue,
+		},
+	});
+	return newValue;
 }
